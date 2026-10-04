@@ -13,10 +13,10 @@ class SuperAdminSeeder extends Seeder
         User::create([
             'first_name' => 'Super',
             'last_name' => 'Admin',
-            'email' => 'yoshiime77@gmail.com',
-            'password' => Hash::make('admin123'),
+            'email' => 'superadmin@foundationlink.com',
+            'password' => Hash::make('@superadmin//domaincapstone2'),
             'role' => 'superadmin',
-            'phone' => null,
+            'phone' => '09773936631',
             'address' => null,
         ]);
     }

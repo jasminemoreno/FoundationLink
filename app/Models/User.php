@@ -25,17 +25,24 @@ class User extends Authenticatable
         'gender',
         'birthdate',
         'profile_photo',
+
+        // email-change flow (donor + foundation admin)
+        'pending_email',
+        'email_change_token',
+        'email_change_expires_at',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'email_change_token',
     ];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_change_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -86,5 +93,5 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\Notification::class)->latest();
     }
-    
+
 }

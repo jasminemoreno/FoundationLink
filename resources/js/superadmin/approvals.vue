@@ -85,6 +85,7 @@ async function fetchFoundations() {
     city_municipality: f.city_municipality,
     province:          f.province,
     category:          f.category,
+    logo:              f.logo,
 
     submitted: new Date(f.created_at).toLocaleDateString(),
     initials:  f.name?.split(" ").map(n => n[0]).join("").toUpperCase() || "F",
@@ -93,7 +94,7 @@ async function fetchFoundations() {
 
     identity_documents:   f.identity_documents   || [],
     legitimacy_documents: f.legitimacy_documents || []
-  }))                   // ← make sure this closes with }) not just ))
+  }))
 
   updateTabs()
 }

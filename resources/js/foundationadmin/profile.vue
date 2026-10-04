@@ -43,10 +43,58 @@
             </div>
           </div>
 
+          <!-- EMAIL (with change-verification flow) -->
           <div class="form-group">
             <label>Email</label>
             <input :value="form.email" type="email" disabled />
-            <p class="field-hint">Email cannot be changed as it serves as your account identifier.</p>
+
+            <!-- pending change awaiting confirmation -->
+            <div v-if="form.pending_email" class="email-pending">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>Verification sent to <strong>{{ form.pending_email }}</strong> — check that inbox to confirm.</span>
+              <button type="button" class="link-btn" @click="cancelPendingEmail" :disabled="cancellingEmail">
+                Cancel
+              </button>
+            </div>
+
+            <!-- trigger -->
+            <button
+              v-else-if="!emailEditing"
+              type="button"
+              class="link-btn"
+              @click="emailEditing = true"
+            >
+              Change email
+            </button>
+            <p v-if="!emailEditing && !form.pending_email" class="field-hint">
+              Changing your email requires confirming a link sent to the new address before it takes effect.
+            </p>
+
+            <!-- edit box -->
+            <div v-if="emailEditing && !form.pending_email" class="email-edit-box">
+              <div class="form-group">
+                <label>New Email</label>
+                <input v-model="newEmail" type="email" placeholder="new.email@example.com" />
+              </div>
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label>Current Password</label>
+                <input v-model="emailPassword" type="password" />
+              </div>
+
+              <p v-if="emailError" class="error-text">{{ emailError }}</p>
+
+              <div class="email-edit-actions">
+                <button type="button" class="btn-cancel-sm" @click="closeEmailEdit">Cancel</button>
+                <button type="button" class="btn-save-sm" @click="requestEmailChange" :disabled="sendingEmailRequest">
+                  <span v-if="!sendingEmailRequest">Send Verification Link</span>
+                  <Spinner v-else :size="14" color="#fff" track="rgba(255,255,255,0.35)" />
+                </button>
+              </div>
+            </div>
+
+            <p v-if="emailSuccess" class="success-text">{{ emailSuccess }}</p>
           </div>
 
           <div class="form-group">
@@ -74,7 +122,8 @@
           </div>
           <div class="form-group">
             <label>New Password</label>
-            <input v-model="passwordForm.new_password" type="password" placeholder="At least 8 characters" />
+            <input v-model="passwordForm.new_password" type="password" placeholder="At least 12 characters" />
+            <p class="field-hint">Must be at least 12 characters and include a number and a special character.</p>
           </div>
           <div class="form-group">
             <label>Confirm New Password</label>
@@ -105,6 +154,7 @@ const form = ref({
   first_name: '',
   last_name: '',
   email: '',
+  pending_email: '',
   phone: '',
   
 })
@@ -126,6 +176,15 @@ const savingPassword    = ref(false)
 const passwordError     = ref('')
 const passwordSuccess   = ref('')
 
+/* ── EMAIL CHANGE ── */
+const emailEditing        = ref(false)
+const newEmail            = ref('')
+const emailPassword       = ref('')
+const emailError          = ref('')
+const emailSuccess        = ref('')
+const sendingEmailRequest = ref(false)
+const cancellingEmail     = ref(false)
+
 const initials = computed(() => {
   if (!form.value.first_name) return 'FA'
   return [form.value.first_name, form.value.last_name]
@@ -146,10 +205,11 @@ async function loadProfile() {
     const res = await api.get('/foundation/profile')
     const u = res.data
     form.value = {
-      first_name: u.first_name || '',
-      last_name:  u.last_name  || '',
-      email:      u.email      || '',
-      phone:      u.phone      || '',
+      first_name:    u.first_name    || '',
+      last_name:     u.last_name     || '',
+      email:         u.email         || '',
+      pending_email: u.pending_email || '',
+      phone:         u.phone         || '',
       
     }
     photoPreview.value = getImage(u.profile_photo)
@@ -217,8 +277,16 @@ async function savePassword() {
     passwordError.value = 'Please enter your current password.'
     return
   }
-  if (passwordForm.value.new_password.length < 8) {
-    passwordError.value = 'New password must be at least 8 characters.'
+  if (passwordForm.value.new_password.length < 12) {
+    passwordError.value = 'New password must be at least 12 characters.'
+    return
+  }
+  if (!/[0-9]/.test(passwordForm.value.new_password)) {
+    passwordError.value = 'New password must include at least one number.'
+    return
+  }
+  if (!/[^A-Za-z0-9]/.test(passwordForm.value.new_password)) {
+    passwordError.value = 'New password must include at least one special character.'
     return
   }
   if (passwordForm.value.new_password !== passwordForm.value.new_password_confirmation) {
@@ -243,6 +311,59 @@ async function savePassword() {
       : err.response?.data?.message || 'Failed to update password.'
   } finally {
     savingPassword.value = false
+  }
+}
+
+/* ── EMAIL CHANGE ── */
+function closeEmailEdit() {
+  emailEditing.value = false
+  newEmail.value = ''
+  emailPassword.value = ''
+  emailError.value = ''
+}
+
+async function requestEmailChange() {
+  emailError.value = ''
+  emailSuccess.value = ''
+
+  if (!newEmail.value) {
+    emailError.value = 'Please enter a new email address.'
+    return
+  }
+  if (!emailPassword.value) {
+    emailError.value = 'Please enter your current password.'
+    return
+  }
+
+  sendingEmailRequest.value = true
+  try {
+    const res = await api.post('/foundation/profile/email/request', {
+      new_email: newEmail.value,
+      current_password: emailPassword.value,
+    })
+    form.value.pending_email = res.data.pending_email
+    emailSuccess.value = res.data.message
+    closeEmailEdit()
+  } catch (err) {
+    const errors = err.response?.data?.errors
+    emailError.value = errors
+      ? Object.values(errors).flat().join(' · ')
+      : err.response?.data?.message || 'Failed to request email change.'
+  } finally {
+    sendingEmailRequest.value = false
+  }
+}
+
+async function cancelPendingEmail() {
+  cancellingEmail.value = true
+  try {
+    await api.post('/foundation/profile/email/cancel')
+    form.value.pending_email = ''
+    emailSuccess.value = ''
+  } catch (err) {
+    console.error('Failed to cancel pending email change:', err)
+  } finally {
+    cancellingEmail.value = false
   }
 }
 </script>
@@ -306,6 +427,39 @@ async function savePassword() {
 }
 .btn-save:hover:not(:disabled) { background: #133c8a; }
 .btn-save:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* EMAIL CHANGE */
+.link-btn {
+  margin-top: 8px; background: none; border: none; padding: 0;
+  font-size: 0.78rem; font-weight: 700; color: #1a56c4; cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+.link-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.email-pending {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 8px; padding: 10px 12px;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  font-size: 0.78rem; color: #1e3a8a; line-height: 1.5;
+}
+.email-pending svg { flex-shrink: 0; margin-top: 1px; }
+.email-pending .link-btn { margin-top: 0; margin-left: auto; color: #1e3a8a; flex-shrink: 0; }
+
+.email-edit-box {
+  margin-top: 12px; padding: 14px;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+}
+.email-edit-box .form-group:last-of-type { margin-bottom: 0; }
+.email-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.btn-cancel-sm, .btn-save-sm {
+  padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.btn-cancel-sm { border: 1px solid #e2e8f0; background: white; color: #64748b; }
+.btn-save-sm { border: none; background: #1a56c4; color: white; min-width: 150px; }
+.btn-save-sm:hover:not(:disabled) { background: #133c8a; }
+.btn-save-sm:disabled { opacity: 0.65; cursor: not-allowed; }
 
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; }

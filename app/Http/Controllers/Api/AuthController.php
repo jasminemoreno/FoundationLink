@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Validation\ValidationException;
@@ -44,19 +45,63 @@ class AuthController extends Controller
     }
 
     /**
+     * Normalize a PH phone number to +639XXXXXXXXX format.
+     * Accepts 09XXXXXXXXX or +639XXXXXXXXX (spaces/dashes/parens stripped).
+     * Returns null if the input doesn't match either format, or is empty.
+     */
+    private function normalizePhone(?string $input): ?string
+    {
+        if (!$input)
+            return null;
+
+        $cleaned = preg_replace('/[\s\-()]/', '', $input);
+
+        if (preg_match('/^09\d{9}$/', $cleaned)) {
+            return '+63' . substr($cleaned, 1);
+        }
+
+        if (preg_match('/^\+639\d{9}$/', $cleaned)) {
+            return $cleaned;
+        }
+
+        return null;
+    }
+
+    /**
      * Register Donor
      */
     public function registerDonor(Request $request)
     {
+        // Normalize phone BEFORE validation so the regex/unique checks
+        // run against the final +63 format, not whatever format the user typed.
+        $request->merge([
+            'phone' => $this->normalizePhone($request->input('phone')),
+        ]);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
-            'phone' => 'nullable|string|max:20',
+            'password' => [
+                'required',
+                'min:12',
+                'regex:/^(?=.*\d)(?=.*[^a-zA-Z0-9]).{12,}$/',
+                'confirmed',
+            ],
+            'phone' => [
+                'required',
+                'regex:/^\+639\d{9}$/',
+                Rule::unique('users', 'phone')->where(fn($query) => $query->where('role', 'donor')),
+            ],
             'address' => 'nullable|string',
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'birthdate' => 'nullable|date|before:today',
+        ], [
+            'phone.required' => 'Phone number is required.',
+            'phone.regex' => 'Enter a valid PH phone number (09XXXXXXXXX or +639XXXXXXXXX).',
+            'phone.unique' => 'This phone number is already registered to another donor account.',
+            'password.min' => 'Password must be at least 12 characters.',
+            'password.regex' => 'Password must include at least 1 number and 1 special character.',
         ]);
 
         $user = User::create([
@@ -65,7 +110,7 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'role' => 'donor',
-            'phone' => $validated['phone'] ?? null,
+            'phone' => $validated['phone'],
             'address' => $validated['address'] ?? null,
             'gender' => $validated['gender'] ?? null,
             'birthdate' => $validated['birthdate'] ?? null,
@@ -83,12 +128,31 @@ class AuthController extends Controller
      */
     public function registerFoundation(Request $request)
     {
+        $request->merge([
+            'phone' => $this->normalizePhone($request->input('phone')),
+        ]);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'phone' => 'required|string|max:20',
-            'password' => 'required|min:8|confirmed',
+            'phone' => [
+                'required',
+                'regex:/^\+639\d{9}$/',
+                Rule::unique('users', 'phone')->where(fn($query) => $query->where('role', 'foundation_admin')),
+            ],
+            'password' => [
+                'required',
+                'min:12',
+                'regex:/^(?=.*\d)(?=.*[^a-zA-Z0-9]).{12,}$/',
+                'confirmed',
+            ],
+        ], [
+            'phone.required' => 'Phone number is required.',
+            'phone.regex' => 'Enter a valid PH phone number (09XXXXXXXXX or +639XXXXXXXXX).',
+            'phone.unique' => 'This phone number is already registered to another foundation account.',
+            'password.min' => 'Password must be at least 12 characters.',
+            'password.regex' => 'Password must include at least 1 number and 1 special character.',
         ]);
 
         $user = User::create([
@@ -157,8 +221,10 @@ class AuthController extends Controller
             ]
         );
 
-        $user->notify(new class($otp) extends Notification {
-            public function __construct(public string $otp) {}
+        $user->notify(
+            new class ($otp) extends Notification {
+            public function __construct(public string $otp)
+            {}
 
             public function via($notifiable)
             {
@@ -178,7 +244,8 @@ class AuthController extends Controller
                     ->line('This code will expire in 10 minutes.')
                     ->line('If you did not request this, no further action is required.');
             }
-        });
+            }
+        );
 
         return response()->json([
             'success' => true,

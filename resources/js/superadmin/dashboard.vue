@@ -159,28 +159,6 @@
         </div>
       </div>
 
-      <!-- Quick Stats -->
-      <div class="card quick-card">
-        <div class="card-header">
-          <div>
-            <h3>Platform Health</h3>
-            <p>System status</p>
-          </div>
-        </div>
-        <div class="health-list">
-          <div class="health-item" v-for="h in health" :key="h.label">
-            <div class="health-icon" :class="h.status">
-              <span v-html="h.icon"></span>
-            </div>
-            <div class="health-info">
-              <strong>{{ h.label }}</strong>
-              <small>{{ h.detail }}</small>
-            </div>
-            <span class="health-badge" :class="h.status">{{ h.badge }}</span>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 </template>
@@ -222,18 +200,6 @@ const topCampaigns       = ref([])
 const topItemDrives      = ref([])
 const categories         = ref([])
 const activities         = ref([])
-
-// Platform Health stays static — it reflects that the app/API is
-// reachable and responding, not user-generated data from a table.
-const health = ref([
-  {
-    label: 'API Server',
-    detail: 'Live system',
-    badge: 'Healthy',
-    status: 'healthy',
-    icon: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`
-  }
-])
 
 const loadDashboard = async () => {
   try {
@@ -398,8 +364,8 @@ onMounted(() => {
 
 .drive-donors { font-size: 0.72rem; color: #94a3b8; }
 
-/* Bottom Row */
-.bottom-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+/* Bottom Row — two cards side by side */
+.bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 
 /* Activity */
 .activity-list { padding: 0 20px 20px; }
@@ -429,24 +395,4 @@ onMounted(() => {
 
 .cat-bar { height: 5px; background: #f1f5f9; border-radius: 99px; overflow: hidden; }
 .cat-bar-fill { height: 100%; border-radius: 99px; }
-
-/* Health */
-.health-list { padding: 0 20px 20px; }
-
-.health-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-.health-item:last-child { border-bottom: none; }
-
-.health-icon { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-.health-icon.healthy { background: #f0fdf4; color: #059669; }
-.health-icon.warning { background: #fefce8; color: #ca8a04; }
-.health-icon.danger { background: #fef2f2; color: #dc2626; }
-
-.health-info { flex: 1; }
-.health-info strong { display: block; font-size: 0.83rem; color: #0F2D52; }
-.health-info small { font-size: 0.73rem; color: #94a3b8; }
-
-.health-badge { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-.health-badge.healthy { background: #f0fdf4; color: #059669; }
-.health-badge.warning { background: #fefce8; color: #ca8a04; }
-.health-badge.danger { background: #fef2f2; color: #dc2626; }
 </style>

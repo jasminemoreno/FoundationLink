@@ -9,9 +9,13 @@ use App\Models\Donation;
 use App\Models\Notification;
 use App\Models\Foundation;
 use App\Models\FoundationPaymentAccount;
+use App\Models\User;
+use App\Mail\FoundationEmailChangeVerification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class DonorController extends Controller
 {
@@ -329,6 +333,80 @@ class DonorController extends Controller
         $user->update($validated);
 
         return response()->json(['message' => 'Profile updated', 'user' => $user]);
+    }
+
+    /* ══════════════════════════════
+       REQUEST EMAIL CHANGE
+       Stores the new address as pending_email and emails a
+       confirmation link to it. The live `email` column is not
+       touched until the link is clicked. Confirmation itself is
+       handled by the shared public route
+       POST /foundation/profile/email/confirm/{token}
+       (FoundationController::confirmEmailChange), which looks the
+       user up by token only, so it works for donors too.
+    ══════════════════════════════ */
+    public function requestEmailChange(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'new_email' => 'required|string|email|max:255',
+            'current_password' => 'required|string',
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.',
+                'errors' => ['current_password' => ['Current password is incorrect.']],
+            ], 422);
+        }
+
+        if (strtolower($validated['new_email']) === strtolower($user->email)) {
+            return response()->json([
+                'message' => 'This is already your current email address.',
+                'errors' => ['new_email' => ['This is already your current email address.']],
+            ], 422);
+        }
+
+        $emailTaken = User::where('email', $validated['new_email'])
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($emailTaken) {
+            return response()->json([
+                'message' => 'This email is already in use by another account.',
+                'errors' => ['new_email' => ['This email is already in use by another account.']],
+            ], 422);
+        }
+
+        $token = Str::random(64);
+
+        $user->update([
+            'pending_email' => $validated['new_email'],
+            'email_change_token' => hash('sha256', $token),
+            'email_change_expires_at' => now()->addHours(24),
+        ]);
+
+        Mail::to($validated['new_email'])->send(new FoundationEmailChangeVerification($user, $token));
+
+        return response()->json([
+            'message' => "A verification link has been sent to {$validated['new_email']}. Click it to confirm the change.",
+            'pending_email' => $validated['new_email'],
+        ]);
+    }
+
+    /* ══════════════════════════════
+       CANCEL PENDING EMAIL CHANGE
+    ══════════════════════════════ */
+    public function cancelEmailChange()
+    {
+        auth()->user()->update([
+            'pending_email' => null,
+            'email_change_token' => null,
+            'email_change_expires_at' => null,
+        ]);
+
+        return response()->json(['message' => 'Pending email change cancelled.']);
     }
 
     /* ══════════════════════════════

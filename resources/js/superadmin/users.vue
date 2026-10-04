@@ -50,7 +50,7 @@
 
             <td>
               <div class="user-cell">
-                <AvatarInitials :name="u.name" :seed="u.id" :size="36" />
+                <AvatarInitials :name="u.name" :seed="u.id" :size="36" :src="u.profile_photo || ''" />
                 <div>
                   <strong>{{ u.name }}</strong>
                   <small>{{ u.email }}</small>
@@ -126,7 +126,7 @@
       width="420px"
     >
       <div class="modal-hero" v-if="viewUser">
-        <AvatarInitials :name="viewUser.name" :seed="viewUser.id" :size="64" :radius="16" />
+        <AvatarInitials :name="viewUser.name" :seed="viewUser.id" :size="64" :radius="16" :src="viewUser.profile_photo || ''" />
         <h3>{{ viewUser.name }}</h3>
         <p class="modal-email">{{ viewUser.email }}</p>
 

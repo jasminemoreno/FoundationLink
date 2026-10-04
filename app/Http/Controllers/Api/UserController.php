@@ -25,6 +25,9 @@ class UserController extends Controller
                     'created_at' => $u->created_at,
                     'initials' => strtoupper(substr($u->first_name, 0, 1) . substr($u->last_name, 0, 1)),
                     'color' => $this->avatarColor($u->id),
+                    // 🖼️ profile photo — hardcoded base URL to match the pattern
+                    // used elsewhere in the frontend (getImage() helpers)
+                    'profile_photo' => $u->profile_photo ? 'http://127.0.0.1:8000/storage/' . $u->profile_photo : null,
                 ];
             });
 

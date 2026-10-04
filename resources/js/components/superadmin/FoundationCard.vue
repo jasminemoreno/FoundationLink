@@ -2,7 +2,13 @@
   <div class="f-card">
 
     <div class="f-card-top">
-      <div class="f-avatar">{{ foundation.initials }}</div>
+      <AvatarInitials
+        :name="foundation.name"
+        :seed="foundation.id"
+        :src="foundation.logo"
+        :size="42"
+        :radius="10"
+      />
 
       <div class="f-meta">
         <div class="f-name">{{ foundation.name }}</div>
@@ -46,6 +52,8 @@
 </template>
 
 <script setup>
+import AvatarInitials from './avatarinitials.vue'
+
 defineProps({ foundation: Object })
 defineEmits(['view'])
 
@@ -71,20 +79,6 @@ function statusLabel(s) {
 .f-card:hover { border-color: #cbd5e1; }
 
 .f-card-top { display: flex; align-items: flex-start; gap: 12px; }
-
-.f-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: #E6F1FB;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 500;
-  color: #0C447C;
-  flex-shrink: 0;
-}
 
 .f-meta { flex: 1; min-width: 0; }
 

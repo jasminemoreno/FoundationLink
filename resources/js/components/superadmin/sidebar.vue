@@ -2,7 +2,9 @@
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="logo-wrap">
-        <div class="logo-icon">FL</div>
+        <div class="logo-icon">
+  <img src="../../assets//img//logo.png" alt="FoundationLink logo" />
+</div>
         <div>
           <h2>Foundation<span>Link</span></h2>
           <p>Super Administrator</p>
@@ -45,8 +47,9 @@
       <router-link to="/admin/campaign" class="menu-item">
         <span class="icon">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="m22 3-8.646 8.646M22 3H15m7 0v7M11.354 13.354C10.553 12.55 9.5 12 8.5 12c-2.485 0-4.5 2.015-4.5 4.5S6.015 21 8.5 21s4.5-2.015 4.5-4.5c0-1-.55-2.053-1.354-2.854l.308-.292z"/>
-          </svg>
+  <path d="m3 11 18-5v12L3 14v-3z"/>
+  <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+</svg>
         </span>
         <span class="label">Campaigns</span>
       </router-link>
@@ -162,8 +165,8 @@ onBeforeUnmount(() => {
   width: 265px;
   min-width: 265px;
   height: 100vh;
-  background: #0F2D52;
-  color: white;
+  background: #F0FDFA;
+  color: #115E59;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -171,15 +174,19 @@ onBeforeUnmount(() => {
   left: 0;
   overflow-y: auto;
   scrollbar-width: none;
+  border-right: 1px solid #99F6E4;
 }
 
 .sidebar::-webkit-scrollbar { display: none; }
 
 .sidebar-header {
-  padding: 24px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  height: 70px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #99F6E4;
+  box-sizing: border-box;
 }
-
 .logo-wrap {
   display: flex;
   align-items: center;
@@ -191,29 +198,32 @@ onBeforeUnmount(() => {
   height: 44px;
   min-width: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #D4AF37, #f0cc5a);
-  color: #0F2D52;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 900;
-  font-size: 0.9rem;
-  box-shadow: 0 4px 12px rgba(212,175,55,0.4);
+  background: white; /* or transparent, depending on your logo */
+  box-shadow: 0 4px 12px rgba(212,175,55,0.3);
 }
 
+.logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 h2 {
   font-size: 1rem;
   font-weight: 700;
-  color: white;
+  color: #115E59;
   margin: 0;
   line-height: 1.2;
 }
 
-h2 span { color: #D4AF37; }
+h2 span { color: #b8901f; }
 
 p {
   font-size: 0.72rem;
-  color: #7899be;
+  color: #4d9c92;
   margin: 2px 0 0;
 }
 
@@ -221,7 +231,7 @@ p {
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #4a7098;
+  color: #67b0a5;
   padding: 18px 20px 6px;
 }
 
@@ -234,7 +244,7 @@ p {
   align-items: center;
   gap: 11px;
   padding: 11px 12px;
-  color: #a8c4de;
+  color: #0F766E;
   text-decoration: none;
   border-radius: 10px;
   margin-bottom: 2px;
@@ -245,8 +255,8 @@ p {
 }
 
 .menu-item:hover {
-  background: rgba(255,255,255,0.06);
-  color: white;
+  background: #CCFBF1;
+  color: #115E59;
 }
 
 .menu-item .icon {
@@ -256,20 +266,20 @@ p {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(17,94,89,0.05);
   flex-shrink: 0;
   transition: all 0.2s;
 }
 
 .menu-item:hover .icon {
-  background: rgba(255,255,255,0.1);
+  background: rgba(17,94,89,0.1);
 }
 
 .label { flex: 1; }
 
 .pill {
   background: #D4AF37;
-  color: #0F2D52;
+  color: #115E59;
   font-size: 0.68rem;
   font-weight: 700;
   padding: 2px 7px;
@@ -277,20 +287,20 @@ p {
 }
 
 .router-link-active {
-  background: linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.08));
-  color: #f0cc5a;
-  border: 1px solid rgba(212,175,55,0.2);
+  background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06));
+  color: #9a7515;
+  border: 1px solid rgba(212,175,55,0.35);
 }
 
 .router-link-active .icon {
   background: rgba(212,175,55,0.2);
-  color: #D4AF37;
+  color: #b8901f;
 }
 
 .sidebar-footer {
   margin-top: auto;
   padding: 16px 12px;
-  border-top: 1px solid rgba(255,255,255,0.07);
+  border-top: 1px solid #99F6E4;
 }
 
 .logout-btn {
@@ -300,8 +310,8 @@ p {
   gap: 10px;
   padding: 10px 12px;
   border: none;
-  background: rgba(239,68,68,0.1);
-  color: #f87171;
+  background: rgba(239,68,68,0.08);
+  color: #dc2626;
   border-radius: 10px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -310,6 +320,6 @@ p {
 }
 
 .logout-btn:hover {
-  background: rgba(239,68,68,0.2);
+  background: rgba(239,68,68,0.15);
 }
 </style>

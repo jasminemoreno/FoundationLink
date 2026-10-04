@@ -1,4 +1,4 @@
-  import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 
   // AUTH
   import LoginPage from '../login.vue'
@@ -34,6 +34,7 @@
   import FoundationHelp from '../foundationadmin/help.vue'
   import FoundationContact from '../foundationadmin/contact.vue'
   import FoundationAdminProfile from '../foundationadmin/profile.vue'
+  import EmailChangeConfirm from '../foundationadmin/Emailchangeconfirm.vue'
 
   // DONOR
   import Register from '../donor/register.vue'
@@ -41,7 +42,6 @@
   import DonorDashboard from '../donor/dashboard.vue'
   import DonorCampaign from '../donor/campaign.vue'
   import DonorDonation from '../donor/donations.vue'
-  import Update from '../donor/update.vue'
   import Notification from '../donor/notification.vue'
   import Profile from '../donor/profile.vue'
   import Help from '../donor/help.vue'
@@ -62,6 +62,10 @@
     { path: '/foundation/create',      name: 'foundation.create',     component: CreateFoundation },
     { path: '/foundation/verification',name: 'foundation.verification',component: Verification   },
     { path: '/forgot-password',        name: 'forgotpassword',         component: ForgotPassword },
+
+    // Public — reached from the confirmation link in the email-change email.
+    // No requiresAuth: the admin may click this from a logged-out session.
+    { path: '/verify-email-change/:token', name: 'verify-email-change', component: EmailChangeConfirm },
 
 
     // ── SUPER ADMIN ──
@@ -114,7 +118,6 @@
         { path: 'dashboard',     name: 'donor-dashboard',     component: DonorDashboard },
         { path: 'campaigns',     name: 'donor-campaigns',     component: DonorCampaign  },
         { path: 'donations',     name: 'donor-donations',     component: DonorDonation  },
-        { path: 'updates',       name: 'donor-updates',       component: Update         },
         { path: 'notifications', name: 'donor-notifications', component: Notification   },
         { path: 'profile',       name: 'donor-profile',       component: Profile        },
         { path: 'help',          name: 'donor-help',          component: Help           },

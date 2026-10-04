@@ -4,7 +4,10 @@
 
       <div class="page-head">
         <div>
-          <h1>Notifications</h1>
+          <div class="title-row">
+            <h1>Notifications</h1>
+            <span v-if="unreadCount > 0" class="unread-badge">{{ unreadCount }}</span>
+          </div>
           <p>Stay updated on your donations</p>
         </div>
         <button v-if="notifications.length" class="btn-clear-all" @click="confirmClearAll = true">
@@ -63,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Spinner from '../components/donor/spinner.vue'
@@ -76,6 +79,8 @@ const notifications  = ref([])
 const isLoading       = ref(false)
 const confirmClearAll = ref(false)
 const clearing         = ref(false)
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
 
 async function load() {
   isLoading.value = true
@@ -135,8 +140,17 @@ async function clearAll() {
 .container { max-width: 800px; margin: 0 auto; padding: 32px 24px; }
 
 .page-head { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-.page-head h1 { font-size: 1.5rem; font-weight: 900; color: #0e5c36; margin: 0 0 4px; }
-.page-head p  { font-size: 0.85rem; color: #475569; margin: 0; }
+.page-head h1 { font-size: 1.5rem; font-weight: 900; color: #0e5c36; margin: 0; }
+.page-head p  { font-size: 0.85rem; color: #475569; margin: 4px 0 0; }
+
+.title-row { display: flex; align-items: center; gap: 10px; }
+.unread-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 6px;
+  background: #1a8a52; color: white;
+  font-size: 0.72rem; font-weight: 800;
+  border-radius: 999px;
+}
 
 .btn-clear-all {
   padding: 9px 16px; border: 1.5px solid #e2e8f0; background: white; color: #64748b;

@@ -17,6 +17,18 @@ class DonationController extends Controller
         return Foundation::where('user_id', auth()->id())->firstOrFail();
     }
 
+    /**
+     * Full URL for a donor's profile photo, or null if they have none.
+     * Hardcoded base URL matches UserController and the frontend getImage()
+     * helpers — change it in one place when moving off localhost.
+     */
+    private function donorPhotoUrl($donor): ?string
+    {
+        return $donor && $donor->profile_photo
+            ? 'http://127.0.0.1:8000/storage/' . $donor->profile_photo
+            : null;
+    }
+
     /* ══════════════════════════════
        LIST ALL DONATIONS FOR FOUNDATION
     ══════════════════════════════ */
@@ -70,6 +82,7 @@ class DonationController extends Controller
                             substr($donor->first_name ?? '', 0, 1) .
                             substr($donor->last_name ?? '', 0, 1)
                         ),
+                        'profile_photo' => $this->donorPhotoUrl($donor),
                     ] : null,
 
                     'campaign' => $campaign ? [
@@ -157,6 +170,7 @@ class DonationController extends Controller
                         substr($donor->first_name ?? '', 0, 1) .
                         substr($donor->last_name ?? '', 0, 1)
                     ),
+                    'profile_photo' => $this->donorPhotoUrl($donor),
                     'total_donated' => $monetary->sum('amount'),
                     'total_items' => $items->count(),
                     'total_donations' => $donations->count(),

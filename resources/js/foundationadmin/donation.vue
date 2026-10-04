@@ -86,7 +86,7 @@
             <!-- DONOR -->
             <td>
               <div class="donor-cell">
-                <AvatarInitials :initials="d.donor.initials" :seed="d.donor.id" :size="36" />
+                <AvatarInitials :initials="d.donor.initials" :seed="d.donor.id" :size="36" :src="d.donor.profile_photo || ''" />
                 <div>
                   <strong>{{ d.donor.name }}</strong>
                   <small>{{ d.donor.email }}</small>
@@ -175,59 +175,132 @@
     >
       <!-- donor info -->
       <div class="modal-donor">
-        <AvatarInitials :initials="viewDonation.donor.initials" :seed="viewDonation.donor.id" :size="48" />
+        <AvatarInitials :initials="viewDonation.donor.initials" :seed="viewDonation.donor.id" :size="48" :src="viewDonation.donor.profile_photo || ''" />
         <div>
           <div class="donor-name">{{ viewDonation.donor.name }}</div>
           <div class="donor-email">{{ viewDonation.donor.email }}</div>
         </div>
+        <span class="donation-ref">#{{ viewDonation.id }}</span>
       </div>
 
-      <div class="modal-grid">
-        <div class="mg-item">
-          <span class="mg-label">Campaign</span>
-          <span>{{ viewDonation.campaign.title }}</span>
+      <!-- DETAILS -->
+      <div class="detail-section">
+        <div class="detail-section-title">Details</div>
+
+        <div class="detail-row">
+          <span class="detail-label">Campaign</span>
+          <span class="detail-value">{{ viewDonation.campaign.title }}</span>
         </div>
-        <div class="mg-item">
-          <span class="mg-label">Status</span>
+        <div class="detail-row">
+          <span class="detail-label">Status</span>
           <Badge :label="statusLabel(viewDonation.status)" :tone="toneForDonationStatus(viewDonation.status)" />
         </div>
-        <div class="mg-item">
-          <span class="mg-label">Type</span>
+        <div class="detail-row">
+          <span class="detail-label">Type</span>
           <Badge :label="typeLabel(viewDonation.type)" :tone="viewDonation.type === 'monetary' ? 'success' : 'info'" />
         </div>
-        <div class="mg-item">
-          <span class="mg-label">Date</span>
-          <span>{{ formatDate(viewDonation.donated_at) }}</span>
+        <div class="detail-row">
+          <span class="detail-label">Date</span>
+          <span class="detail-value">{{ formatDate(viewDonation.donated_at) }}</span>
         </div>
 
-        <!-- monetary -->
         <template v-if="viewDonation.type === 'monetary'">
-          <div class="mg-item mg-full">
-            <span class="mg-label">Amount</span>
-            <span class="big-amount">₱{{ formatMoney(viewDonation.amount) }}</span>
+          <div class="detail-row">
+            <span class="detail-label">Amount</span>
+            <span class="detail-amount">₱{{ formatMoney(viewDonation.amount) }}</span>
           </div>
         </template>
-
-        <!-- item -->
         <template v-else>
-          <div class="mg-item">
-            <span class="mg-label">Item</span>
-            <span>{{ viewDonation.item_name }}</span>
+          <div class="detail-row">
+            <span class="detail-label">Item</span>
+            <span class="detail-value">{{ viewDonation.item_name }}</span>
           </div>
-          <div class="mg-item">
-            <span class="mg-label">Quantity</span>
-            <span>{{ viewDonation.item_quantity }}</span>
+          <div class="detail-row">
+            <span class="detail-label">Quantity</span>
+            <span class="detail-value">{{ viewDonation.item_quantity }}</span>
           </div>
-          <div class="mg-item mg-full" v-if="viewDonation.item_description">
-            <span class="mg-label">Description</span>
-            <span>{{ viewDonation.item_description }}</span>
+          <div class="detail-row detail-row-stack" v-if="viewDonation.item_description">
+            <span class="detail-label">Description</span>
+            <span class="detail-value">{{ viewDonation.item_description }}</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- VERIFICATION -->
+      <div class="detail-section">
+        <div class="detail-section-title">Verification</div>
+
+        <template v-if="viewDonation.type === 'monetary'">
+          <div
+            v-if="viewDonation.proof_photo"
+            class="verify-row"
+            @click="openImage(viewDonation.proof_photo, 'Proof of Payment')"
+          >
+            <img :src="getImage(viewDonation.proof_photo)" class="verify-thumb-sm" alt="Proof of payment" />
+            <div class="verify-meta">
+              <div class="verify-meta-title">Payment receipt</div>
+              <div class="verify-meta-sub">Uploaded by donor</div>
+            </div>
+            <span class="verify-view-btn">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              View
+            </span>
+          </div>
+          <div v-else class="verify-row verify-row-empty">
+            <span class="verify-empty-icon">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </span>
+            <div class="verify-meta">
+              <div class="verify-meta-title verify-meta-title-muted">No proof of payment uploaded</div>
+              <div class="verify-meta-sub">This donation has not been verified</div>
+            </div>
           </div>
         </template>
 
-        <div class="mg-item mg-full" v-if="viewDonation.notes">
-          <span class="mg-label">Notes</span>
-          <span>{{ viewDonation.notes }}</span>
-        </div>
+        <template v-else>
+          <div
+            v-if="viewDonation.item_photo"
+            class="verify-row"
+            @click="openImage(viewDonation.item_photo, 'Item Photo')"
+          >
+            <img :src="getImage(viewDonation.item_photo)" class="verify-thumb-sm" alt="Donated item" />
+            <div class="verify-meta">
+              <div class="verify-meta-title">Item photo</div>
+              <div class="verify-meta-sub">Uploaded by donor</div>
+            </div>
+            <span class="verify-view-btn">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              View
+            </span>
+          </div>
+          <div v-else class="verify-row verify-row-empty">
+            <span class="verify-empty-icon">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </span>
+            <div class="verify-meta">
+              <div class="verify-meta-title verify-meta-title-muted">No item photo uploaded</div>
+              <div class="verify-meta-sub">This donation has not been verified</div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- NOTES -->
+      <div class="detail-section" v-if="viewDonation.notes">
+        <div class="detail-section-title">Notes</div>
+        <p class="detail-notes">{{ viewDonation.notes }}</p>
       </div>
 
       <template #footer>
@@ -244,6 +317,21 @@
         >Mark as Received</button>
       </template>
     </FoundationModal>
+
+    <!-- IMAGE LIGHTBOX (proof of payment / item photo enlarge) -->
+    <div v-if="enlargedImage" class="lightbox-overlay" @click.self="closeLightbox">
+      <div class="lightbox-panel">
+        <div class="lightbox-head">
+          <span>{{ enlargedLabel }}</span>
+          <button class="lightbox-close" @click="closeLightbox">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <img :src="enlargedImage" class="lightbox-img" alt="Enlarged verification photo" />
+      </div>
+    </div>
 
   </div>
 </template>
@@ -266,6 +354,8 @@ const activeType     = ref("all")
 const filterStatus   = ref("")
 const filterCampaign = ref("")
 const viewDonation   = ref(null)
+const enlargedImage  = ref(null)
+const enlargedLabel  = ref("")
 
 const isVerified     = ref(false)
 const checkingStatus = ref(true)
@@ -392,6 +482,17 @@ async function updateStatus(d, status) {
 /* ── VIEW ── */
 function openView(d) { viewDonation.value = { ...d } }
 
+/* ── VERIFICATION IMAGE (proof of payment / item photo) ── */
+function getImage(path) { return path ? `http://127.0.0.1:8000/storage/${path}` : '' }
+function openImage(path, label) {
+  enlargedImage.value = getImage(path)
+  enlargedLabel.value = label
+}
+function closeLightbox() {
+  enlargedImage.value = null
+  enlargedLabel.value = ""
+}
+
 /* ── HELPERS ── */
 function formatMoney(v) { return Number(v || 0).toLocaleString() }
 
@@ -474,18 +575,110 @@ tbody td { padding: 12px 16px; font-size: 0.84rem; color: #475569; }
 .action-btn:hover   { opacity: 0.75; transform: scale(1.1); }
 
 /* MODAL */
-.modal-donor { display: flex; align-items: center; gap: 12px; background: #f8fafc; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
+.modal-donor { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
 .donor-name  { font-size: 0.95rem; font-weight: 600; color: #0F2D52; }
 .donor-email { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+.donation-ref { margin-left: auto; font-size: 0.75rem; font-weight: 600; color: #94a3b8; font-variant-numeric: tabular-nums; }
 
-.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-.mg-item  { display: flex; flex-direction: column; gap: 4px; }
-.mg-full  { grid-column: span 2; }
-.mg-label { font-size: 0.72rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+.detail-section { padding: 16px 0; border-bottom: 1px solid #f1f5f9; }
+.detail-section:last-of-type { border-bottom: none; padding-bottom: 4px; }
+.detail-section-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: #94a3b8; margin-bottom: 10px;
+}
 
-.big-amount { font-size: 1.4rem; font-weight: 800; color: #059669; }
+.detail-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 0;
+}
+.detail-row-stack { align-items: flex-start; }
+.detail-label { font-size: 0.8rem; color: #64748b; flex-shrink: 0; }
+.detail-value { font-size: 0.84rem; font-weight: 600; color: #0F2D52; text-align: right; }
+.detail-row-stack .detail-value { text-align: left; margin-top: 4px; flex-basis: 100%; }
+.detail-amount { font-size: 1.05rem; font-weight: 800; color: #059669; }
+
+.detail-notes {
+  font-size: 0.84rem; color: #475569; line-height: 1.55;
+  background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px;
+  padding: 10px 12px; margin: 0;
+}
+
+/* DONATION VERIFICATION (proof of payment / item photo) */
+.verify-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.verify-row:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+.verify-thumb-sm {
+  width: 48px; height: 48px; border-radius: 8px;
+  object-fit: cover; flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.verify-meta { flex: 1; min-width: 0; }
+.verify-meta-title { font-size: 0.83rem; font-weight: 600; color: #0F2D52; }
+.verify-meta-sub { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+
+.verify-view-btn {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.76rem; font-weight: 600; color: #0F2D52;
+  flex-shrink: 0; padding: 6px 10px;
+  border: 1px solid #e2e8f0; border-radius: 8px;
+}
+.verify-row:hover .verify-view-btn { border-color: #0F2D52; }
+
+.verify-row-empty { cursor: default; background: #f8fafc; }
+.verify-row-empty:hover { border-color: #e2e8f0; background: #f8fafc; }
+.verify-empty-icon {
+  width: 48px; height: 48px; border-radius: 8px;
+  background: #f1f5f9; color: #94a3b8;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.verify-meta-title-muted { color: #64748b; }
 
 .btn-cancel { padding: 9px 18px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-save   { padding: 9px 20px; border: none; background: #059669; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-danger { padding: 9px 20px; border: none; background: #dc2626; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
+
+/* IMAGE LIGHTBOX */
+.lightbox-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(15,23,42,0.75);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 32px;
+}
+.lightbox-panel {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  max-width: 90vw; max-height: 90vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column;
+}
+.lightbox-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.lightbox-head span { font-size: 0.78rem; font-weight: 600; color: #475569; }
+.lightbox-close {
+  width: 26px; height: 26px; border-radius: 7px;
+  border: 1px solid #e2e8f0; background: transparent;
+  color: #64748b; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.lightbox-close:hover { background: #f1f5f9; color: #0F2D52; }
+.lightbox-img {
+  display: block;
+  max-width: 90vw; max-height: calc(90vh - 49px);
+  object-fit: contain;
+}
 </style>

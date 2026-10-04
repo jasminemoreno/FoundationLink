@@ -13,6 +13,9 @@ return new class extends Migration {
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email')->unique();
+            $table->string('pending_email')->nullable();
+            $table->string('email_change_token')->nullable();
+            $table->timestamp('email_change_expires_at')->nullable();
             $table->string('password');
 
             $table->enum('role', [

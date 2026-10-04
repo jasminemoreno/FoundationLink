@@ -90,11 +90,20 @@
 
         <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
 
-        <button class="next-btn" type="submit">
-          Submit for Verification ▶
+        <button class="next-btn" type="submit" :disabled="isSubmitting">
+          <span v-if="!isSubmitting">Submit for Verification ▶</span>
+          <span v-else class="spinner" />
         </button>
 
       </form>
+    </div>
+
+    <!-- SUCCESS POPUP -->
+    <div v-if="showSuccess" class="success-overlay">
+      <div class="success-popup">
+        <div class="success-icon">✓</div>
+        <p>Verification submitted successfully!</p>
+      </div>
     </div>
 
   </FoundationAuthLayout>
@@ -110,6 +119,8 @@ import FoundationStepper from "../components/foundation-admin/FoundationStepper.
 
 const router = useRouter()
 const errorMsg = ref('')
+const isSubmitting = ref(false)
+const showSuccess = ref(false)
 
 const form = reactive({
   admin_id_type: "",
@@ -150,6 +161,8 @@ async function submitVerification() {
     return
   }
 
+  isSubmitting.value = true
+
   try {
     const formData = new FormData()
 
@@ -171,11 +184,17 @@ async function submitVerification() {
       }
     })
 
-    alert("Verification submitted successfully!")
-    router.push("/login")
+    isSubmitting.value = false
+    showSuccess.value = true
+
+    setTimeout(() => {
+      showSuccess.value = false
+      router.push("/login")
+    }, 2000)
 
   } catch (err) {
     console.error(err)
+    isSubmitting.value = false
     errorMsg.value = err.response?.data?.message || "Failed to submit verification"
   }
 }
@@ -240,9 +259,78 @@ label {
   border: none;
   border-radius: 10px;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.next-btn:hover {
+.next-btn:hover:not(:disabled) {
   background: #1565c0;
+}
+
+.next-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* SUCCESS POPUP */
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.success-popup {
+  background: white;
+  border-radius: 16px;
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  animation: popIn 0.25s ease;
+}
+
+.success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f0fdf4;
+  color: #059669;
+  font-size: 1.6rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.success-popup p {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 </style>

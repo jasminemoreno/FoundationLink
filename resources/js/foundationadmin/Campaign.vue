@@ -107,7 +107,7 @@
             <button
               v-if="c.status === 'active' || c.status === 'paused'"
               class="ov-btn complete" title="Mark Complete"
-              @click="completeCampaign(c)"
+              @click="openCompleteModal(c)"
             >
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <polyline points="20 6 9 17 4 12"/>
@@ -431,92 +431,119 @@
     <FoundationModal
       v-if="viewTarget"
       :title="viewTarget.title"
-      width="600px"
+      width="640px"
       @close="viewTarget = null"
     >
-      <div class="view-cover" v-if="viewTarget.cover_photo">
+      <!-- COVER with overlaid status/type pills -->
+      <div class="vd-cover" v-if="viewTarget.cover_photo">
         <img :src="getImage(viewTarget.cover_photo)" alt="" />
-        <span class="badge view-badge" :class="viewTarget.status">{{ statusLabel(viewTarget.status) }}</span>
+        <div class="vd-cover-gradient"></div>
+        <div class="vd-cover-badges">
+          <span class="vd-pill vd-status" :class="viewTarget.status">
+            <span class="vd-status-dot"></span>{{ statusLabel(viewTarget.status) }}
+          </span>
+          <span class="vd-pill vd-type">{{ viewTarget.type }}</span>
+        </div>
       </div>
 
-      <div class="view-grid">
-        <div class="vg-item">
-          <span class="vg-label">Status</span>
-          <span class="badge inline-badge" :class="viewTarget.status">{{ statusLabel(viewTarget.status) }}</span>
+      <!-- No-cover fallback: pills sit above content instead -->
+      <div class="vd-header-noCover" v-else>
+        <span class="vd-pill vd-status" :class="viewTarget.status">
+          <span class="vd-status-dot"></span>{{ statusLabel(viewTarget.status) }}
+        </span>
+        <span class="vd-pill vd-type">{{ viewTarget.type }}</span>
+        <span v-if="viewTarget.category" class="vd-pill vd-category">
+          {{ viewTarget.category.icon || '🏷️' }} {{ viewTarget.category.name }}
+        </span>
+      </div>
+
+      <!-- Category pill under the cover when a cover exists -->
+      <div class="vd-category-row" v-if="viewTarget.cover_photo && viewTarget.category">
+        <span class="vd-pill vd-category">
+          {{ viewTarget.category.icon || '🏷️' }} {{ viewTarget.category.name }}
+        </span>
+      </div>
+
+      <!-- FUNDING STATS -->
+      <template v-if="viewTarget.type !== 'item'">
+        <div class="vd-stats">
+          <div class="vd-stat">
+            <span class="vd-stat-label">Raised</span>
+            <span class="vd-stat-value raised">₱{{ formatMoney(viewTarget.current_amount) }}</span>
+          </div>
+          <div class="vd-stat-divider"></div>
+          <div class="vd-stat">
+            <span class="vd-stat-label">Goal</span>
+            <span class="vd-stat-value">₱{{ formatMoney(viewTarget.goal_amount) }}</span>
+          </div>
+          <div class="vd-stat-divider"></div>
+          <div class="vd-stat">
+            <span class="vd-stat-label">Funded</span>
+            <span class="vd-stat-value pct">{{ percent(viewTarget) }}%</span>
+          </div>
         </div>
-        <div class="vg-item">
-          <span class="vg-label">Type</span>
-          <Badge :label="viewTarget.type" tone="info" />
+        <div class="vd-progress-bar">
+          <div class="vd-progress-fill" :style="{ width: percent(viewTarget) + '%' }"></div>
         </div>
-        <div class="vg-item" v-if="viewTarget.category">
-          <span class="vg-label">Category</span>
-          <Badge :label="`${viewTarget.category.icon || '🏷️'} ${viewTarget.category.name}`" tone="purple" />
-        </div>
-        <div class="vg-item">
-          <span class="vg-label">Start Date</span>
-          <span>{{ formatDate(viewTarget.start_date) || '—' }}</span>
-        </div>
-        <div class="vg-item">
-          <span class="vg-label">End Date</span>
-          <span>{{ formatDate(viewTarget.end_date) || '—' }}</span>
-        </div>
-        <div class="vg-item">
-          <span class="vg-label">Goal</span>
-          <span>{{ viewTarget.type !== 'item' ? '₱' + formatMoney(viewTarget.goal_amount) : '—' }}</span>
-        </div>
-        <div class="vg-item">
-          <span class="vg-label">Raised</span>
-          <span>{{ viewTarget.type !== 'item' ? '₱' + formatMoney(viewTarget.current_amount) : '—' }}</span>
+      </template>
+
+      <!-- INFO LIST -->
+      <div class="vd-info-list">
+        <div class="vd-info-row">
+          <span class="vd-info-icon">📅</span>
+          <span class="vd-info-label">Duration</span>
+          <span class="vd-info-value">
+            {{ formatDate(viewTarget.start_date) || '—' }} → {{ formatDate(viewTarget.end_date) || 'Ongoing' }}
+          </span>
         </div>
 
-        <div
-          class="vg-item vg-full"
-          v-if="viewTarget.type === 'item' || viewTarget.type === 'both'"
-        >
-          <span class="vg-label">Accepted Delivery Methods</span>
-          <div class="delivery-badges-row">
-            <template v-if="viewTarget.accepted_delivery_methods?.length">
+        <div class="vd-info-row" v-if="viewTarget.type === 'item' || viewTarget.type === 'both'">
+          <span class="vd-info-icon">📦</span>
+          <span class="vd-info-label">Delivery</span>
+          <span class="vd-info-value">
+            <span class="vd-tag-row" v-if="viewTarget.accepted_delivery_methods?.length">
               <span
                 v-if="viewTarget.accepted_delivery_methods.includes('dropoff')"
-                class="delivery-badge dropoff"
+                class="vd-tag dropoff"
               >🏢 Drop Off</span>
               <span
                 v-if="viewTarget.accepted_delivery_methods.includes('pickup')"
-                class="delivery-badge pickup"
+                class="vd-tag pickup"
               >🏠 Pick Up</span>
-            </template>
-            <span v-else class="no-delivery">None specified</span>
-          </div>
+            </span>
+            <span v-else class="vd-muted">None specified</span>
+          </span>
         </div>
 
-        <div
-          class="vg-item vg-full"
-          v-if="viewTarget.type === 'monetary' || viewTarget.type === 'both'"
-        >
-          <span class="vg-label">Accepted Payment Methods</span>
-          <div class="delivery-badges-row">
-            <template v-if="viewTarget.accepted_payment_methods?.length">
+        <div class="vd-info-row" v-if="viewTarget.type === 'monetary' || viewTarget.type === 'both'">
+          <span class="vd-info-icon">💳</span>
+          <span class="vd-info-label">Payment</span>
+          <span class="vd-info-value">
+            <span class="vd-tag-row" v-if="viewTarget.accepted_payment_methods?.length">
               <span
                 v-for="pmId in viewTarget.accepted_payment_methods" :key="pmId"
-                class="delivery-badge payment"
+                class="vd-tag payment"
               >{{ paymentMethodName(pmId) }}</span>
-            </template>
-            <span v-else class="no-delivery">None specified</span>
-          </div>
+            </span>
+            <span v-else class="vd-muted">None specified</span>
+          </span>
         </div>
 
-        <div class="vg-item vg-full" v-if="viewTarget.pause_reason">
-          <span class="vg-label">⏸ Pause Reason</span>
-          <span style="color:#92400e;">{{ viewTarget.pause_reason }}</span>
+        <div class="vd-info-row" v-if="viewTarget.pause_reason">
+          <span class="vd-info-icon">⏸️</span>
+          <span class="vd-info-label">Pause Reason</span>
+          <span class="vd-info-value vd-pause-text">{{ viewTarget.pause_reason }}</span>
         </div>
-        <div class="vg-item vg-full">
-          <span class="vg-label">Description</span>
-          <span>{{ viewTarget.description || '—' }}</span>
+
+        <div class="vd-info-row vd-info-row-desc">
+          <span class="vd-info-icon">📝</span>
+          <span class="vd-info-label">Description</span>
+          <span class="vd-info-value">{{ viewTarget.description || '—' }}</span>
         </div>
       </div>
 
-      <div v-if="viewTarget.photos?.length" class="view-section">
-        <div class="view-section-label">Follow-up Photos</div>
+      <div v-if="viewTarget.photos?.length" class="vd-section">
+        <div class="vd-section-label">Follow-up Photos</div>
         <div class="view-photo-grid">
           <div
             v-for="p in viewTarget.photos" :key="p.id"
@@ -553,7 +580,7 @@
         <button
           v-if="viewTarget.status === 'active' || viewTarget.status === 'paused'"
           class="btn-complete"
-          @click="completeCampaign(viewTarget); viewTarget = null"
+          @click="openCompleteModal(viewTarget); viewTarget = null"
         >Mark Complete</button>
         <button class="btn-save" @click="openEdit(viewTarget); viewTarget = null">Edit</button>
       </template>
@@ -583,6 +610,35 @@
         <button class="btn-cancel" @click="showPauseModal = false">Cancel</button>
         <button class="btn-pause-confirm" @click="confirmPause" :disabled="pauseSaving">
           <span v-if="!pauseSaving">Pause Campaign</span>
+          <Spinner v-else :size="16" color="#fff" track="rgba(255,255,255,0.35)" />
+        </button>
+      </template>
+    </FoundationModal>
+
+    <!-- MARK COMPLETE CONFIRM -->
+    <FoundationModal
+      v-if="completeTarget"
+      title="Mark Campaign as Complete"
+      width="440px"
+      @close="completeTarget = null"
+    >
+      <div class="complete-modal-body">
+        <div class="complete-icon">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <p class="complete-modal-text">
+          Mark <strong>{{ completeTarget?.title }}</strong> as completed?
+          This will close the campaign to further donations and <strong>cannot be undone</strong>.
+        </p>
+      </div>
+
+      <template #footer>
+        <button class="btn-cancel" @click="completeTarget = null">Cancel</button>
+        <button class="btn-complete-confirm" @click="confirmComplete" :disabled="completing">
+          <span v-if="!completing">Mark Complete</span>
           <Spinner v-else :size="16" color="#fff" track="rgba(255,255,255,0.35)" />
         </button>
       </template>
@@ -654,6 +710,9 @@ const pauseTarget    = ref(null)
 const pauseReason    = ref("")
 const pauseError     = ref("")
 const pauseSaving    = ref(false)
+
+const completeTarget = ref(null)
+const completing     = ref(false)
 
 const isVerified     = ref(false)
 const checkingStatus = ref(true)
@@ -865,13 +924,23 @@ async function resumeCampaign(c) {
   } catch (err) { console.error(err) }
 }
 
-async function completeCampaign(c) {
-  if (!confirm(`Mark "${c.title}" as completed? This cannot be undone.`)) return
+function openCompleteModal(c) {
+  completeTarget.value = c
+}
+
+async function confirmComplete() {
+  if (!completeTarget.value) return
+  completing.value = true
   try {
-    await api.patch(`/foundation/campaigns/${c.id}/complete`)
-    const target = campaigns.value.find(x => x.id === c.id)
+    await api.patch(`/foundation/campaigns/${completeTarget.value.id}/complete`)
+    const target = campaigns.value.find(x => x.id === completeTarget.value.id)
     if (target) { target.status = 'completed'; target.pause_reason = null }
-  } catch (err) { console.error(err) }
+    completeTarget.value = null
+  } catch (err) {
+    console.error(err)
+  } finally {
+    completing.value = false
+  }
 }
 
 function onCoverFile(e) {
@@ -1138,10 +1207,6 @@ function statusLabel(s) {
   flex-shrink: 0;
 }
 
-.delivery-badges-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-.no-delivery { font-size: 0.83rem; color: #94a3b8; }
-.delivery-badge.payment { background: #f5f3ff; color: #7c3aed; }
-
 .payment-options { display: flex; flex-direction: column; gap: 10px; }
 
 .payment-opt {
@@ -1206,18 +1271,78 @@ function statusLabel(s) {
 
 .pause-modal-desc { font-size: 0.85rem; color: #475569; margin: 0 0 16px; line-height: 1.6; }
 
-.view-cover { position: relative; height: 200px; border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
-.view-cover img { width: 100%; height: 100%; object-fit: cover; }
-.view-badge { position: absolute; top: 12px; left: 12px; }
-.inline-badge { position: static; font-size: 0.73rem; padding: 3px 10px; border-radius: 20px; }
+/* MARK COMPLETE MODAL */
+.complete-modal-body { display: flex; gap: 14px; align-items: flex-start; }
+.complete-icon {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: #f5f3ff; color: #7c3aed;
+  display: flex; align-items: center; justify-content: center;
+}
+.complete-modal-text { font-size: 0.87rem; color: #475569; line-height: 1.65; margin: 0; padding-top: 6px; }
+.complete-modal-text strong { color: #1e293b; }
 
-.view-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 18px; }
-.vg-item  { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: #1e293b; }
-.vg-full  { grid-column: span 2; }
-.vg-label { font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+.btn-complete-confirm {
+  padding: 9px 20px; border: none; background: #7c3aed; color: white; border-radius: 10px;
+  font-size: 0.87rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; min-width: 130px;
+  transition: background 0.2s;
+}
+.btn-complete-confirm:hover:not(:disabled) { background: #6d28d9; }
+.btn-complete-confirm:disabled { opacity: 0.65; cursor: not-allowed; }
 
-.view-section { margin-bottom: 18px; }
-.view-section-label { font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+/* ══════════════════════════════
+   VIEW DETAILS MODAL — professional redesign
+══════════════════════════════ */
+.vd-cover { position: relative; height: 220px; border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+.vd-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vd-cover-gradient { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%); }
+.vd-cover-badges { position: absolute; bottom: 12px; left: 12px; display: flex; gap: 8px; }
+
+.vd-header-noCover { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.vd-category-row { margin: -8px 0 16px; }
+
+.vd-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.vd-status { color: white; }
+.vd-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.vd-status.active    { background: #0284c7; }
+.vd-status.completed { background: #059669; }
+.vd-status.draft     { background: #64748b; }
+.vd-status.cancelled { background: #dc2626; }
+.vd-status.paused    { background: #ca8a04; }
+.vd-type     { background: rgba(255,255,255,0.92); color: #0F2D52; }
+.vd-header-noCover .vd-type { background: #eff6ff; color: #3b82f6; }
+.vd-category { background: #f5f3ff; color: #7c3aed; }
+
+.vd-stats { display: flex; align-items: center; background: #f8fafc; border-radius: 14px; padding: 16px 20px; margin-bottom: 10px; }
+.vd-stat { flex: 1; display: flex; flex-direction: column; gap: 3px; text-align: center; }
+.vd-stat-label { font-size: 0.68rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+.vd-stat-value { font-size: 1.05rem; font-weight: 800; color: #0F2D52; }
+.vd-stat-value.raised { color: #059669; }
+.vd-stat-value.pct { color: #3b82f6; }
+.vd-stat-divider { width: 1px; height: 32px; background: #e2e8f0; }
+
+.vd-progress-bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+.vd-progress-fill { height: 100%; background: linear-gradient(90deg, #0F2D52, #3b82f6); border-radius: 99px; transition: width 0.5s ease; }
+
+.vd-info-list { display: flex; flex-direction: column; background: white; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; margin-bottom: 18px; }
+.vd-info-row { display: grid; grid-template-columns: 28px 100px 1fr; align-items: start; gap: 10px; padding: 13px 16px; border-bottom: 1px solid #f1f5f9; }
+.vd-info-row:last-child { border-bottom: none; }
+.vd-info-icon { font-size: 0.95rem; line-height: 1.4; }
+.vd-info-label { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.03em; padding-top: 2px; }
+.vd-info-value { font-size: 0.86rem; color: #1e293b; line-height: 1.5; }
+.vd-info-row-desc .vd-info-value { white-space: pre-wrap; }
+.vd-pause-text { color: #92400e; }
+.vd-muted { color: #94a3b8; font-size: 0.83rem; }
+
+.vd-tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.vd-tag { font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+.vd-tag.dropoff { background: #f0fdf4; color: #059669; }
+.vd-tag.pickup  { background: #eff6ff; color: #3b82f6; }
+.vd-tag.payment { background: #f5f3ff; color: #7c3aed; }
+
+.vd-section { margin-bottom: 18px; }
+.vd-section-label { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+
 .view-photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .view-photo { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 4/3; cursor: pointer; background: #f1f5f9; }
 .view-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }

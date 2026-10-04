@@ -222,8 +222,9 @@
                     </div>
                   </div>
 
-                  <!-- DONATE BTN -->
+                  <!-- ACTIONS -->
                   <div class="ci-action">
+                    <button class="btn-view" @click="openDetails(c)">View Details</button>
                     <button
                       v-if="c.status === 'active'"
                       class="btn-donate"
@@ -271,6 +272,14 @@
       </div>
     </div>
 
+    <!-- VIEW DETAILS MODAL -->
+    <CampaignDetailsModal
+      v-if="detailsTarget"
+      :campaign="detailsTarget"
+      @close="detailsTarget = null"
+      @donate="onDonateFromDetails"
+    />
+
     <!-- DONATE MODAL -->
     <DonateModal
       v-if="donateTarget"
@@ -290,6 +299,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../../services/api.js'
 import DonateModal from '../../components/donor/donatemodal.vue'
+import CampaignDetailsModal from '../../components/donor/ViewDetail.vue'
 import Spinner from '../../components/donor/spinner.vue'
 import EmptyState from '../../components/donor/emptystate.vue'
 import Lightbox from '../../components/donor/lightbox.vue'
@@ -300,6 +310,7 @@ const route       = useRoute()
 const isLoading   = ref(false)
 const foundation  = ref(null)
 const donateTarget = ref(null)
+const detailsTarget = ref(null)
 const lightbox    = ref(null)
 const campTab     = ref('all')
 const expandedUpdates = ref([])
@@ -430,8 +441,8 @@ function campCount(key) {
   return foundation.value.campaigns.filter(c => c.status === key).length
 }
 
-function openDonate(c) {
-  donateTarget.value = {
+function withFoundation(c) {
+  return {
     ...c,
     foundation: {
       id:   foundation.value.id,
@@ -439,6 +450,20 @@ function openDonate(c) {
       logo: foundation.value.logo,
     }
   }
+}
+
+function openDonate(c) {
+  donateTarget.value = withFoundation(c)
+}
+
+function openDetails(c) {
+  detailsTarget.value = withFoundation(c)
+}
+
+// Called when the user clicks "Donate Now" from inside the details modal
+function onDonateFromDetails(c) {
+  detailsTarget.value = null
+  donateTarget.value  = c
 }
 
 function statusLabel(s) {
@@ -634,11 +659,13 @@ function progressColor(pct) {
 .ci-photo-more { position: absolute; inset: 0; background: rgba(0,0,0,0.5); color: white; font-size: 1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
 
 /* CI ACTION */
-.ci-action { padding: 16px; display: flex; align-items: center; }
+.ci-action { padding: 16px; display: flex; flex-direction: column; gap: 8px; align-items: stretch; justify-content: center; min-width: 150px; }
+.btn-view { padding: 10px 18px; border: 1.5px solid #e2e8f0; background: white; color: #0F2D52; border-radius: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: border-color 0.2s, background 0.2s; }
+.btn-view:hover { border-color: #1a8a52; background: #f0fdf4; }
 .btn-donate { padding: 10px 18px; border: none; background: #1a8a52; color: white; border-radius: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
 .btn-donate:hover { background: #157042; }
-.ci-paused-label    { font-size: 0.78rem; font-weight: 700; color: #ca8a04; background: #fefce8; padding: 6px 12px; border-radius: 10px; white-space: nowrap; }
-.ci-completed-label { font-size: 0.78rem; font-weight: 700; color: #059669; background: #f0fdf4; padding: 6px 12px; border-radius: 10px; white-space: nowrap; }
+.ci-paused-label    { font-size: 0.78rem; font-weight: 700; color: #ca8a04; background: #fefce8; padding: 6px 12px; border-radius: 10px; white-space: nowrap; text-align: center; }
+.ci-completed-label { font-size: 0.78rem; font-weight: 700; color: #059669; background: #f0fdf4; padding: 6px 12px; border-radius: 10px; white-space: nowrap; text-align: center; }
 
 /* CAMPAIGN UPDATES (nested) */
 .ci-updates { border-top: 1px solid #e2e8f0; }

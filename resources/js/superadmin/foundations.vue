@@ -41,7 +41,7 @@
 
             <td>
               <div class="fdn-cell">
-                <AvatarInitials :name="f.name" :seed="f.id" :size="38" />
+                <AvatarInitials :name="f.name" :seed="f.id" :src="f.logo" :size="38" />
                 <div>
                   <strong>{{ f.name }}</strong>
                   <small>{{ f.user?.email || 'No email' }}</small>
@@ -114,6 +114,7 @@
             v-if="viewFoundation"
             :name="viewFoundation.name"
             :seed="viewFoundation.id"
+            :src="viewFoundation.logo"
             :size="52"
             :radius="14"
           />

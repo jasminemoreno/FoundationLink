@@ -159,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
 import DonateModal from '@/components/donor/DonateModal.vue'
 import CampaignDetailsModal from '../components/donor/ViewDetail.vue'
@@ -180,10 +180,18 @@ const detailsTarget      = ref(null)
 
 const dashData = ref({ total_donated: 0, total_items: 0, campaigns_supported: 0 })
 
-const user = computed(() => {
+/* ── CURRENT USER (stays in sync when the profile is edited) ── */
+function loadUserFromStorage() {
   try { return JSON.parse(sessionStorage.getItem('user') || 'null') }
   catch { return null }
-})
+}
+
+const user = ref(loadUserFromStorage())
+
+// Fired by the donor profile page after saving (same event the Topbar listens to)
+function handleUserUpdated(e) {
+  user.value = e.detail || loadUserFromStorage()
+}
 
 const timeOfDay = computed(() => {
   const h = new Date().getHours()
@@ -233,7 +241,16 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  window.addEventListener('user-updated', handleUserUpdated)
+  // re-read in case the profile was edited while this page was cached/hidden
+  user.value = loadUserFromStorage()
+  load()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('user-updated', handleUserUpdated)
+})
 
 function openDonate(c)  { donateTarget.value = c }
 function openDetails(c) { detailsTarget.value = c }
@@ -257,7 +274,7 @@ function statusLabel(s) {
 
 /* ─── HERO ─── */
 .hero {
-  background: linear-gradient(135deg, #0a4228 0%, #0e5c36 45%, #1a8a52 100%);
+  background: linear-gradient(135deg, #1f9459 0%, #36ab70 50%, #4dbb83 100%);
   border-radius: 24px;
   padding: 44px 48px;
   display: flex;
@@ -378,10 +395,14 @@ function statusLabel(s) {
 @keyframes spin-slow { to { transform: rotate(360deg); } }
 
 .hero-img {
-  width: 90px; height: 90px;
+  width: 96px; height: 96px;
+  box-sizing: border-box;
+  padding: 14px;
+  background: white;
+  border-radius: 50%;
   object-fit: contain;
-  opacity: 0.92;
-  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.2));
+  opacity: 1;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
   position: relative;
   z-index: 1;
 }

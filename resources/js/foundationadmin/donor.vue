@@ -60,7 +60,7 @@
             <!-- DONOR -->
             <td>
               <div class="donor-cell">
-                <AvatarInitials :initials="d.initials" :seed="d.id" :size="36" />
+                <AvatarInitials :initials="d.initials" :seed="d.id" :size="36" :src="d.profile_photo || ''" />
                 <div>
                   <strong>{{ d.name }}</strong>
                   <small>{{ d.email }}</small>
@@ -130,7 +130,7 @@
     >
       <!-- avatar + name -->
       <div class="modal-donor-hero">
-        <AvatarInitials :initials="viewDonor.initials" :seed="viewDonor.id" :size="56" />
+        <AvatarInitials :initials="viewDonor.initials" :seed="viewDonor.id" :size="56" :src="viewDonor.profile_photo || ''" />
         <div>
           <div class="donor-hero-name">{{ viewDonor.name }}</div>
           <div class="donor-hero-email">{{ viewDonor.email }}</div>

@@ -39,21 +39,21 @@ onMounted(() => {
   </script>
   
   <style scoped>
-  .layout{
-    display:flex;
-    min-height:100vh;
-    background:#f8fafc;
-  }
-  
-  .main{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    margin-left: 265px;   /* add this — matches sidebar width */
-  }
-  
-  .content{
-    padding:30px;
-    flex:1;
-  }
-  </style>
+.layout{
+  display:flex;
+  min-height:100vh;
+  background:#F7FFFD;
+}
+
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  margin-left: 265px;   /* add this — matches sidebar width */
+}
+
+.content{
+  padding:30px;
+  flex:1;
+}
+</style>

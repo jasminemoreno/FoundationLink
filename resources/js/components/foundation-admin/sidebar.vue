@@ -130,7 +130,7 @@ onMounted(() => {
   width: 290px;
   background:
     radial-gradient(120% 55% at 15% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 60%),
-    linear-gradient(180deg, #1a56c4 0%, #17469f 45%, #0f2f75 100%);
+    linear-gradient(180deg, #0b7fc0 0%, #0873b0 45%, #066499 100%);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -223,7 +223,7 @@ onMounted(() => {
   padding: 13px 16px 13px 20px;
   margin-bottom: 4px;
   border-radius: 12px;
-  color: rgba(255, 255, 255, 0.68);
+  color: rgba(255, 255, 255, 0.95);
   text-decoration: none;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
@@ -236,18 +236,18 @@ onMounted(() => {
   width: 3px;
   height: 22px;
   border-radius: 3px;
-  background: #7eb0ff;
-  box-shadow: 0 0 10px rgba(126, 176, 255, 0.7);
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
   transition: transform 0.2s ease;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
   font-weight: 700;
 }
@@ -260,7 +260,7 @@ onMounted(() => {
 .nav-icon {
   display: flex;
   min-width: 26px;
-  opacity: 0.95;
+  opacity: 1;
 }
 
 /* LABEL */
@@ -281,10 +281,10 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px solid rgba(248, 113, 113, 0.4);
+  border: 1.5px solid #dc2626;
   border-radius: 12px;
-  background: rgba(248, 113, 113, 0.08);
-  color: #ff9b9b;
+  background: #dc2626;
+  color: #fff;
   font-weight: 700;
   font-size: 14.5px;
   cursor: pointer;
@@ -299,7 +299,7 @@ onMounted(() => {
 
 .logout-btn:focus-visible,
 .nav-item:focus-visible {
-  outline: 2px solid #7eb0ff;
+  outline: 2px solid #fff;
   outline-offset: 2px;
 }
 </style>

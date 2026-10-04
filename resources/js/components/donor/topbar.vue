@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 
@@ -99,12 +99,16 @@ const showDropdown = ref(false)
 const profileRef   = ref(null)
 const unreadCount  = ref(0)
 
+// how often the profile re-checks the server while the page is open
+const PROFILE_POLL_MS = 30000
+let profileTimer = null
+
 const navLinks = [
   { to: '/donor/dashboard',   label: 'Home',        match: '/donor/dashboard'   },
   { to: '/donor/foundations', label: 'Foundations', match: '/donor/foundations' },
   { to: '/donor/campaigns',   label: 'Campaigns',    match: '/donor/campaigns'   },
   { to: '/donor/donations',   label: 'Donations',    match: '/donor/donations'   },
-  { to: '/donor/updates',     label: 'Update',       match: '/donor/updates'     },
+
 ]
 
 // prefix match so nested routes (e.g. /donor/foundations/5) still highlight their parent nav item
@@ -122,6 +126,47 @@ function loadUserFromStorage() {
 function handleUserUpdated(e) {
   user.value = e.detail || loadUserFromStorage()
 }
+
+/* ── REFRESH USER FROM SERVER ──
+   Picks up changes made elsewhere (e.g. the mobile app). Saves to
+   sessionStorage and fires 'user-updated' so every listener (this topbar,
+   the Dashboard greeting) updates together. Only fires when something
+   actually changed. */
+async function refreshUser() {
+  const current = loadUserFromStorage()
+  if (!current) return
+  try {
+    const res    = await api.get('/donor/profile')
+    const merged = { ...current, ...res.data }
+
+    const changed =
+      merged.first_name    !== current.first_name ||
+      merged.last_name     !== current.last_name  ||
+      merged.profile_photo !== current.profile_photo ||
+      merged.email         !== current.email
+
+    if (!changed) return
+
+    sessionStorage.setItem('user', JSON.stringify(merged))
+    window.dispatchEvent(new CustomEvent('user-updated', { detail: merged }))
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+// browser tab becomes visible again
+function handleVisibility() {
+  if (document.visibilityState === 'visible') refreshUser()
+}
+
+// browser window gets focus (covers side-by-side windows, where
+// visibilitychange does not fire)
+function handleFocus() {
+  refreshUser()
+}
+
+// refetch whenever the donor navigates to another page
+watch(() => route.path, () => { refreshUser() })
 
 const initials = computed(() => {
   if (!user.value) return 'D'
@@ -171,12 +216,21 @@ function handleClick(e) {
 
 onMounted(() => {
   document.addEventListener('click', handleClick)
+  document.addEventListener('visibilitychange', handleVisibility)
+  window.addEventListener('focus', handleFocus)
   window.addEventListener('user-updated', handleUserUpdated)
   loadUnreadCount()
+  refreshUser()
+  profileTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') refreshUser()
+  }, PROFILE_POLL_MS)
 })
 onUnmounted(() => {
   document.removeEventListener('click', handleClick)
+  document.removeEventListener('visibilitychange', handleVisibility)
+  window.removeEventListener('focus', handleFocus)
   window.removeEventListener('user-updated', handleUserUpdated)
+  if (profileTimer) clearInterval(profileTimer)
 })
 </script>
 

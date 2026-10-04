@@ -9,7 +9,10 @@ use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use App\Mail\FoundationVerificationSubmitted;
+use App\Mail\FoundationEmailChangeVerification;
+use App\Mail\FoundationEmailChangeNotice;
 
 class FoundationController extends Controller
 {
@@ -25,13 +28,11 @@ class FoundationController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
 
-            // 📍 structured address
             'street' => 'nullable|string|max:255',
             'barangay' => 'nullable|string|max:255',
             'city_municipality' => 'nullable|string|max:255',
             'province' => 'nullable|string|max:255',
 
-            // 🖼️ optional branding (can be added later too)
             'logo' => 'nullable|string',
             'cover_photo' => 'nullable|string',
         ]);
@@ -67,6 +68,7 @@ class FoundationController extends Controller
             'foundation' => $foundation
         ], 201);
     }
+
     /**
      * LIST ALL FOUNDATIONS (ADMIN VIEW)
      */
@@ -96,7 +98,6 @@ class FoundationController extends Controller
                 'name' => $f->name,
                 'description' => $f->description,
 
-                // 📍 structured address
                 'street' => $f->street,
                 'barangay' => $f->barangay,
                 'city_municipality' => $f->city_municipality,
@@ -109,23 +110,23 @@ class FoundationController extends Controller
                     $f->province
                 ])->filter()->implode(', '),
 
-                // 🏷️ category
                 'category' => $f->category ? ['id' => $f->category->id, 'name' => $f->category->name] : null,
                 'category_id' => $f->category_id,
+
+                // 🖼️ logo — hardcoded base URL to match the pattern used
+                // elsewhere in the frontend (getImage() helpers)
+                'logo' => $f->logo ? 'http://127.0.0.1:8000/storage/' . $f->logo : null,
 
                 'status' => $f->status,
                 'created_at' => $f->created_at,
 
-                // 👤 owner
                 'user' => $f->user,
 
-                // 📊 stats
                 'campaigns_count' => $f->campaigns_count,
                 'followers_count' => $f->followers_count,
                 'total_raised' => (float) $f->total_raised,
                 'donors_count' => (int) $f->donors_count,
 
-                // 📄 documents
                 'identity_documents' => $f->documents
                     ->where('type', 'identity')
                     ->map(fn($d) => [
@@ -255,7 +256,6 @@ class FoundationController extends Controller
             'city_municipality' => 'nullable|string|max:255',
             'province' => 'nullable|string|max:255',
 
-            // optional document re-upload
             'admin_id_type' => 'nullable|string',
             'doc_type' => 'nullable|string',
             'admin_files' => 'nullable|array|min:1|max:2',
@@ -276,7 +276,6 @@ class FoundationController extends Controller
             'rejection_reason' => null,
         ]);
 
-        // Replace identity documents if new ones were uploaded
         if ($request->hasFile('admin_files')) {
             $foundation->documents()->where('type', 'identity')->delete();
 
@@ -294,7 +293,6 @@ class FoundationController extends Controller
             }
         }
 
-        // Replace legitimacy documents if new ones were uploaded
         if ($request->hasFile('doc_files')) {
             $foundation->documents()->where('type', 'legitimacy')->delete();
 
@@ -312,7 +310,6 @@ class FoundationController extends Controller
             }
         }
 
-        // Notify superadmin by email, same as the original verification submission
         $superAdmin = User::where('role', 'superadmin')->first();
 
         if ($superAdmin && $superAdmin->email) {
@@ -320,7 +317,6 @@ class FoundationController extends Controller
                 ->send(new FoundationVerificationSubmitted($foundation));
         }
 
-        // Notify all superadmins in-app that this foundation resubmitted for review
         Notification::notifySuperadmins(
             'foundation_resubmitted',
             'Foundation resubmitted for review',
@@ -335,12 +331,125 @@ class FoundationController extends Controller
     }
 
     /* ══════════════════════════════
-       PROFILE (the individual admin's own account —
-       mirrors DonorController's profile methods exactly)
+       PROFILE
     ══════════════════════════════ */
     public function profile()
     {
         return response()->json(auth()->user());
+    }
+
+    /* ══════════════════════════════
+       REQUEST EMAIL CHANGE
+       Stores the new address as pending_email and emails a
+       confirmation link to it. The live `email` column is not
+       touched until the link is clicked.
+    ══════════════════════════════ */
+    public function requestEmailChange(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'new_email' => 'required|string|email|max:255',
+            'current_password' => 'required|string',
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.',
+                'errors' => ['current_password' => ['Current password is incorrect.']],
+            ], 422);
+        }
+
+        if (strtolower($validated['new_email']) === strtolower($user->email)) {
+            return response()->json([
+                'message' => 'This is already your current email address.',
+                'errors' => ['new_email' => ['This is already your current email address.']],
+            ], 422);
+        }
+
+        $emailTaken = User::where('email', $validated['new_email'])
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($emailTaken) {
+            return response()->json([
+                'message' => 'This email is already in use by another account.',
+                'errors' => ['new_email' => ['This email is already in use by another account.']],
+            ], 422);
+        }
+
+        $token = Str::random(64);
+
+        $user->update([
+            'pending_email' => $validated['new_email'],
+            'email_change_token' => hash('sha256', $token),
+            'email_change_expires_at' => now()->addHours(24),
+        ]);
+
+        Mail::to($validated['new_email'])->send(new FoundationEmailChangeVerification($user, $token));
+
+        return response()->json([
+            'message' => "A verification link has been sent to {$validated['new_email']}. Click it to confirm the change.",
+            'pending_email' => $validated['new_email'],
+        ]);
+    }
+
+    /* ══════════════════════════════
+       CANCEL PENDING EMAIL CHANGE
+    ══════════════════════════════ */
+    public function cancelEmailChange()
+    {
+        auth()->user()->update([
+            'pending_email' => null,
+            'email_change_token' => null,
+            'email_change_expires_at' => null,
+        ]);
+
+        return response()->json(['message' => 'Pending email change cancelled.']);
+    }
+
+    /* ══════════════════════════════
+       CONFIRM EMAIL CHANGE
+       Public route (no auth) — the token itself is the proof,
+       since the admin may click the link from a different
+       browser/session than the one that requested the change.
+    ══════════════════════════════ */
+    public function confirmEmailChange(Request $request, $token)
+    {
+        $user = User::where('email_change_token', hash('sha256', $token))
+            ->whereNotNull('pending_email')
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'This verification link is invalid or has already been used.',
+            ], 404);
+        }
+
+        if ($user->email_change_expires_at && now()->greaterThan($user->email_change_expires_at)) {
+            return response()->json([
+                'message' => 'This verification link has expired. Please request a new email change.',
+            ], 410);
+        }
+
+        $oldEmail = $user->email;
+        $newEmail = $user->pending_email;
+
+        $user->update([
+            'email' => $newEmail,
+            'pending_email' => null,
+            'email_change_token' => null,
+            'email_change_expires_at' => null,
+        ]);
+
+        if ($oldEmail) {
+            Mail::to($oldEmail)->send(new FoundationEmailChangeNotice($user, $newEmail));
+        }
+
+        return response()->json([
+            'message' => "Your email has been updated to {$newEmail}.",
+            'new_email' => $newEmail,
+        ]);
     }
 
     public function updateProfile(Request $request)
@@ -355,9 +464,16 @@ class FoundationController extends Controller
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'birthdate' => 'nullable|date',
 
-            // Password change is optional — only validated if attempting one
             'current_password' => 'nullable|required_with:new_password|string',
-            'new_password' => 'nullable|min:8|confirmed',
+            'new_password' => [
+                'nullable',
+                'confirmed',
+                'min:12',
+                'regex:/^(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/',
+            ],
+        ], [
+            'new_password.min' => 'New password must be at least 12 characters.',
+            'new_password.regex' => 'New password must include at least one number and one special character.',
         ]);
 
         if (!empty($validated['new_password'])) {
@@ -405,9 +521,10 @@ class FoundationController extends Controller
             'user' => $user,
         ]);
     }
+
     /* ══════════════════════════════
-   NOTIFICATIONS
-══════════════════════════════ */
+       NOTIFICATIONS
+    ══════════════════════════════ */
     public function notifications()
     {
         $notifications = auth()->user()->notifications()->latest()->limit(20)->get();

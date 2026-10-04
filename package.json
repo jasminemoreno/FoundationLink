@@ -21,6 +21,7 @@
     "expo-font": "~57.0.1",
     "expo-linear-gradient": "^57.0.1",
     "expo-splash-screen": "~57.0.4",
+    "jspdf": "^4.2.1",
     "lucide-vue-next": "^1.0.0",
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"

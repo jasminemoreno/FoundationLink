@@ -53,9 +53,9 @@
             </div>
 
             <div class="info-item">
-              <div class="info-item-label">Category</div>
-              <div class="info-item-val">{{ foundation?.category || '—' }}</div>
-            </div>
+  <div class="info-item-label">Category</div>
+  <div class="info-item-val">{{ foundation?.category?.name || '—' }}</div>
+</div>
 
             <div class="info-item">
               <div class="info-item-label">Status</div>

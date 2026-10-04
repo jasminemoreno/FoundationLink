@@ -149,6 +149,66 @@
             </div>
           </div>
 
+          <!-- CHANGE EMAIL -->
+          <div class="panel" style="margin-top: 20px;">
+            <div class="panel-head">
+              <h3 class="panel-title">Change Email</h3>
+            </div>
+            <div class="panel-body">
+
+              <div v-if="user.pending_email" class="pending-box">
+                <div class="pending-text">
+                  <strong>Waiting for confirmation</strong>
+                  <span>
+                    We sent a link to {{ user.pending_email }}. Your email won't change until you click it.
+                  </span>
+                </div>
+                <button
+                  class="btn-cancel-change"
+                  type="button"
+                  @click="cancelEmailChange"
+                  :disabled="emailCancelling"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div class="form-group">
+                <label>New Email</label>
+                <input
+                  v-model="emailForm.new_email"
+                  type="email"
+                  placeholder="Enter your new email address"
+                />
+              </div>
+
+              <div class="form-group">
+                <label>Current Password</label>
+                <div class="pass-wrap">
+                  <input
+                    v-model="emailForm.current_password"
+                    :type="showEmailPass ? 'text' : 'password'"
+                    placeholder="Confirm it's you"
+                  />
+                  <button class="eye-btn" type="button" @click="showEmailPass = !showEmailPass">
+                    👁
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="emailSuccess" class="success-text">{{ emailSuccess }}</p>
+              <p v-if="emailError"   class="error-text">{{ emailError }}</p>
+
+              <div class="form-actions">
+                <button class="btn-save" @click="requestEmailChange" :disabled="emailSaving">
+                  <span v-if="!emailSaving">Send Verification Link</span>
+                  <Spinner v-else :size="16" color="#fff" track="rgba(255,255,255,0.35)" />
+                </button>
+              </div>
+
+            </div>
+          </div>
+
           <!-- CHANGE PASSWORD -->
           <div class="panel" style="margin-top: 20px;">
             <div class="panel-head">
@@ -241,6 +301,12 @@ const passError   = ref('')
 const showPass    = ref(false)
 const showConfirm = ref(false)
 
+const emailSaving     = ref(false)
+const emailCancelling = ref(false)
+const emailSuccess    = ref('')
+const emailError      = ref('')
+const showEmailPass   = ref(false)
+
 const photoInput     = ref(null)
 const photoUploading = ref(false)
 const photoError     = ref('')
@@ -257,6 +323,11 @@ const form = reactive({
 const passForm = reactive({
   password:              '',
   password_confirmation: '',
+})
+
+const emailForm = reactive({
+  new_email:        '',
+  current_password: '',
 })
 
 /* ── LOAD ── */
@@ -320,6 +391,63 @@ async function saveInfo() {
     infoError.value = err.response?.data?.message || 'Failed to update profile.'
   } finally {
     infoSaving.value = false
+  }
+}
+
+/* ── REQUEST EMAIL CHANGE ── */
+async function requestEmailChange() {
+  emailSuccess.value = ''
+  emailError.value   = ''
+
+  const newEmail = emailForm.new_email.trim()
+
+  if (!newEmail) {
+    emailError.value = 'Please enter your new email address.'
+    return
+  }
+  if (!/^\S+@\S+\.\S+$/.test(newEmail)) {
+    emailError.value = 'Please enter a valid email address.'
+    return
+  }
+  if (!emailForm.current_password) {
+    emailError.value = 'Please enter your current password.'
+    return
+  }
+
+  emailSaving.value = true
+  try {
+    const res = await api.post('/donor/profile/email/request', {
+      new_email:        newEmail,
+      current_password: emailForm.current_password,
+    })
+
+    // show the "waiting for confirmation" box without touching the live email
+    user.value = { ...user.value, pending_email: res.data.pending_email }
+
+    emailForm.new_email        = ''
+    emailForm.current_password = ''
+
+    emailSuccess.value = res.data.message
+    setTimeout(() => emailSuccess.value = '', 6000)
+  } catch (err) {
+    emailError.value = err.response?.data?.message || 'Failed to request email change.'
+  } finally {
+    emailSaving.value = false
+  }
+}
+
+/* ── CANCEL PENDING EMAIL CHANGE ── */
+async function cancelEmailChange() {
+  emailSuccess.value = ''
+  emailError.value   = ''
+  emailCancelling.value = true
+  try {
+    await api.post('/donor/profile/email/cancel')
+    user.value = { ...user.value, pending_email: null }
+  } catch (err) {
+    emailError.value = err.response?.data?.message || 'Failed to cancel email change.'
+  } finally {
+    emailCancelling.value = false
   }
 }
 
@@ -536,6 +664,14 @@ const avatarColor = computed(() => {
 .btn-save { padding: 10px 24px; border: none; background: #1a8a52; color: white; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 140px; transition: background 0.2s; }
 .btn-save:hover:not(:disabled) { background: #157042; }
 .btn-save:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* PENDING EMAIL CHANGE (new — used only by the Change Email panel) */
+.pending-box { display: flex; justify-content: space-between; align-items: center; gap: 14px; background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+.pending-text { display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; color: #92400e; line-height: 1.5; }
+.pending-text strong { font-size: 0.82rem; }
+.btn-cancel-change { padding: 7px 16px; border: 1.5px solid #d97706; background: white; color: #92400e; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+.btn-cancel-change:hover:not(:disabled) { background: #fffbeb; }
+.btn-cancel-change:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* DANGER */
 .danger-panel .panel-head { background: #fff5f5; }

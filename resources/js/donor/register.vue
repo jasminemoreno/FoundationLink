@@ -89,7 +89,7 @@
             <input
               v-model="form.phone"
               type="tel"
-              placeholder="Phone Number"
+              placeholder="Phone Number (09XXXXXXXXX)"
               @focus="focused = 'phone'"
               @blur="focused = null"
             />
@@ -188,8 +188,8 @@
             <input
               v-model="form.password"
               :type="showPass ? 'text' : 'password'"
-              placeholder="Password (min 8 characters)"
-              @focus="focused = 'password'"
+              placeholder="Password (min 12 characters)"
+              @focus="focused = 'password'; passwordFocused = true"
               @blur="focused = null"
             />
             <button class="eye-btn" type="button" @click="showPass = !showPass">
@@ -202,6 +202,22 @@
               </svg>
             </button>
           </div>
+
+          <!-- PASSWORD CHECKLIST -->
+          <ul v-if="passwordFocused || form.password" class="password-checklist">
+            <li :class="{ met: passwordChecks.length }">
+              <span class="check-icon">{{ passwordChecks.length ? '✓' : '○' }}</span>
+              At least 12 characters
+            </li>
+            <li :class="{ met: passwordChecks.number }">
+              <span class="check-icon">{{ passwordChecks.number ? '✓' : '○' }}</span>
+              At least 1 number
+            </li>
+            <li :class="{ met: passwordChecks.special }">
+              <span class="check-icon">{{ passwordChecks.special ? '✓' : '○' }}</span>
+              At least 1 special character (e.g. ! @ # $ %)
+            </li>
+          </ul>
 
           <div class="input-group" :class="{ focused: focused === 'password_confirmation' }">
             <div class="input-icon">
@@ -226,17 +242,6 @@
                 <line x1="1" y1="1" x2="23" y2="23"/>
               </svg>
             </button>
-          </div>
-
-          <!-- PASSWORD STRENGTH -->
-          <div class="strength-wrap" v-if="form.password">
-            <div class="strength-bars">
-              <div class="s-bar" :class="{ filled: strength >= 1, weak: strength === 1, medium: strength === 2, strong: strength >= 3 }"></div>
-              <div class="s-bar" :class="{ filled: strength >= 2, medium: strength === 2, strong: strength >= 3 }"></div>
-              <div class="s-bar" :class="{ filled: strength >= 3, strong: strength >= 3 }"></div>
-              <div class="s-bar" :class="{ filled: strength >= 4, strong: strength >= 4 }"></div>
-            </div>
-            <span class="strength-label" :class="strengthClass">{{ strengthLabel }}</span>
           </div>
 
           <p v-if="stepError" class="error-text">{{ stepError }}</p>
@@ -285,9 +290,9 @@
             <input type="checkbox" v-model="agreedToTerms" />
             <span>
               I agree to the
-              <a href="#" class="terms-link">Terms of Service</a>
+              <button type="button" class="terms-link" @click.prevent="showTerms = true">Terms of Service</button>
               and
-              <a href="#" class="terms-link">Privacy Policy</a>
+              <button type="button" class="terms-link" @click.prevent="showPrivacy = true">Privacy Policy</button>
             </span>
           </label>
 
@@ -309,6 +314,9 @@
 
       </div>
     </div>
+
+    <LegalModal v-model="showTerms" title="Terms of Service" :sections="termsSections" />
+    <LegalModal v-model="showPrivacy" title="Privacy Policy" :sections="privacySections" />
   </div>
 </template>
 
@@ -316,6 +324,7 @@
 import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import LegalModal from '../components/donor/legalmodal.vue'
 
 const router    = useRouter()
 const step      = ref(1)
@@ -325,6 +334,83 @@ const stepError = ref('')
 const showPass    = ref(false)
 const showConfirm = ref(false)
 const agreedToTerms = ref(false)
+const passwordFocused = ref(false)
+
+/* ── LEGAL MODALS ── */
+const showTerms   = ref(false)
+const showPrivacy = ref(false)
+
+const termsSections = [
+  {
+    heading: '1. Acceptance of Terms',
+    body: 'By creating an account or using FoundationLink, you agree to these Terms of Service. If you do not agree, please do not use the platform.'
+  },
+  {
+    heading: '2. What FoundationLink Does',
+    body: 'FoundationLink is a platform that connects donors with verified foundations and their campaigns. We facilitate the recording and tracking of monetary and item donations. FoundationLink does not directly process or hold donated funds — payment arrangements for monetary donations are made directly between donors and foundations through the payment details each foundation provides.'
+  },
+  {
+    heading: '3. Account Responsibilities',
+    body: "You are responsible for keeping your account credentials secure and for the accuracy of the information you provide. Donors must be truthful about donation details; foundation admins must be truthful about their organization's identity and the campaigns they create."
+  },
+  {
+    heading: '4. Foundation Verification',
+    body: 'Foundations undergo a verification process before they can create campaigns or receive donations. Verification confirms the information and documents submitted were reviewed by our administrators, but FoundationLink cannot guarantee the ongoing conduct of any foundation after verification.'
+  },
+  {
+    heading: '5. Donations',
+    body: 'All donations made through the platform are voluntary and, once submitted, are generally non-refundable. Cancellation or refund of a donation is at the discretion of the receiving foundation. FoundationLink is not responsible for how a foundation ultimately uses donated funds or items beyond what is disclosed on the campaign.'
+  },
+  {
+    heading: '6. Prohibited Conduct',
+    body: 'Users may not use FoundationLink for fraudulent campaigns, misrepresentation of organizational identity, harassment, or any activity that violates applicable laws. FoundationLink reserves the right to suspend or terminate accounts that violate these terms.'
+  },
+  {
+    heading: '7. Changes to These Terms',
+    body: 'These terms may be updated from time to time. Continued use of the platform after changes are posted constitutes acceptance of the revised terms.'
+  },
+  {
+    heading: '8. Contact',
+    body: 'Questions about these Terms can be sent to',
+    link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' }
+  },
+]
+
+const privacySections = [
+  {
+    heading: '1. Information We Collect',
+    body: "When you register or use FoundationLink, we collect information you provide directly, such as your name, email, phone number, address, gender, and birthdate (for donors), or your foundation's name, description, address, and verification documents (for foundation admins). We also record donation details you submit, such as amount, item descriptions, and delivery preferences."
+  },
+  {
+    heading: '2. How We Use Your Information',
+    body: 'Your information is used to operate your account, process and display donations, verify foundation legitimacy, send relevant notifications (such as campaign updates from foundations you follow), and improve the platform.'
+  },
+  {
+    heading: '3. Sharing of Information',
+    body: 'Donor information relevant to a specific donation (such as name and contact details) is shared with the foundation receiving that donation, so they can confirm receipt and arrange delivery or payment. We do not sell personal information to third parties.'
+  },
+  {
+    heading: '4. Foundation Verification Documents',
+    body: 'Identity and legitimacy documents submitted during foundation verification are used solely for review by our administrators and are not made public or shared outside the verification process.'
+  },
+  {
+    heading: '5. Data Storage and Security',
+    body: 'We take reasonable measures to protect your information from unauthorized access. Passwords are stored securely and are never visible to administrators or other users.'
+  },
+  {
+    heading: '6. Your Choices',
+    body: 'You can update most of your personal information from your Profile page. Email addresses cannot be changed once registered, as they serve as your account identifier.'
+  },
+  {
+    heading: '7. Changes to This Policy',
+    body: 'This policy may be updated from time to time. Continued use of the platform after changes are posted constitutes acceptance of the revised policy.'
+  },
+  {
+    heading: '8. Contact',
+    body: 'Questions about this Privacy Policy can be sent to',
+    link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' }
+  },
+]
 
 const form = reactive({
   first_name:            '',
@@ -338,25 +424,33 @@ const form = reactive({
   password_confirmation: '',
 })
 
-/* ── PASSWORD STRENGTH ── */
-const strength = computed(() => {
-  const p = form.password
-  if (!p) return 0
-  let s = 0
-  if (p.length >= 8)          s++
-  if (/[A-Z]/.test(p))        s++
-  if (/[0-9]/.test(p))        s++
-  if (/[^A-Za-z0-9]/.test(p)) s++
-  return s
-})
+/* ── PHONE ── */
+function normalizePhone(input) {
+  if (!input) return null
 
-const strengthLabel = computed(() => {
-  return ['', 'Weak', 'Fair', 'Good', 'Strong'][strength.value] || ''
-})
+  const cleaned = input.replace(/[\s\-()]/g, '')
 
-const strengthClass = computed(() => {
-  return ['', 'weak', 'medium', 'good', 'strong'][strength.value] || ''
-})
+  if (/^09\d{9}$/.test(cleaned)) {
+    return '+63' + cleaned.slice(1)
+  }
+
+  if (/^\+639\d{9}$/.test(cleaned)) {
+    return cleaned
+  }
+
+  return null
+}
+
+/* ── PASSWORD CHECKLIST ── */
+const passwordChecks = computed(() => ({
+  length: form.password.length >= 12,
+  number: /\d/.test(form.password),
+  special: /[^a-zA-Z0-9]/.test(form.password),
+}))
+
+const isPasswordValid = computed(() =>
+  passwordChecks.value.length && passwordChecks.value.number && passwordChecks.value.special
+)
 
 const genderLabel = computed(() => {
   return { male: 'Male', female: 'Female', prefer_not_to_say: 'Prefer not to say' }[form.gender] || '—'
@@ -369,6 +463,8 @@ function nextStep() {
   if (step.value === 1) {
     if (!form.first_name.trim()) return stepError.value = 'First name is required.'
     if (!form.last_name.trim())  return stepError.value = 'Last name is required.'
+    if (!form.phone.trim())      return stepError.value = 'Phone number is required.'
+    if (!normalizePhone(form.phone)) return stepError.value = 'Enter a valid PH phone number (09XXXXXXXXX or +639XXXXXXXXX).'
     step.value++
     return
   }
@@ -376,7 +472,7 @@ function nextStep() {
   if (step.value === 2) {
     if (!form.email.trim())    return stepError.value = 'Email is required.'
     if (!form.password)        return stepError.value = 'Password is required.'
-    if (form.password.length < 8) return stepError.value = 'Password must be at least 8 characters.'
+    if (!isPasswordValid.value) return stepError.value = 'Password must be at least 12 characters and include a number and a special character.'
     if (form.password !== form.password_confirmation) return stepError.value = 'Passwords do not match.'
     step.value++
     return
@@ -399,7 +495,7 @@ async function register() {
       email:                 form.email,
       password:              form.password,
       password_confirmation: form.password_confirmation,
-      phone:                 form.phone     || null,
+      phone:                 normalizePhone(form.phone),
       address:               form.address   || null,
       gender:                form.gender    || null,
       birthdate:             form.birthdate || null,
@@ -577,19 +673,35 @@ async function register() {
 }
 .eye-btn:hover { color: #1a8a52; }
 
-/* STRENGTH */
-.strength-wrap  { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-.strength-bars  { display: flex; gap: 4px; }
-.s-bar { width: 40px; height: 4px; border-radius: 99px; background: #e2e8f0; transition: background 0.3s; }
-.s-bar.filled.weak   { background: #dc2626; }
-.s-bar.filled.medium { background: #ca8a04; }
-.s-bar.filled.good   { background: #2db870; }
-.s-bar.filled.strong { background: #059669; }
-.strength-label { font-size: 0.75rem; font-weight: 700; }
-.strength-label.weak   { color: #dc2626; }
-.strength-label.medium { color: #ca8a04; }
-.strength-label.good   { color: #2db870; }
-.strength-label.strong { color: #059669; }
+/* PASSWORD CHECKLIST */
+.password-checklist {
+  list-style: none;
+  padding: 0;
+  margin: -6px 0 14px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.password-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  transition: color 0.15s;
+}
+
+.password-checklist li.met {
+  color: #1a8a52;
+}
+
+.check-icon {
+  font-size: 0.85rem;
+  width: 14px;
+  display: inline-block;
+  text-align: center;
+}
 
 /* CONFIRM */
 .confirm-card { background: #f0faf5; border-radius: 14px; padding: 22px; text-align: center; margin-bottom: 16px; }
@@ -604,7 +716,7 @@ async function register() {
 
 .terms-row { display: flex; align-items: flex-start; gap: 10px; font-size: 0.83rem; color: #64748b; margin-bottom: 18px; cursor: pointer; line-height: 1.5; }
 .terms-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: #1a8a52; margin-top: 2px; flex-shrink: 0; }
-.terms-link { color: #1a8a52; font-weight: 700; text-decoration: none; }
+.terms-link { color: #1a8a52; font-weight: 700; text-decoration: none; background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; cursor: pointer; }
 .terms-link:hover { text-decoration: underline; }
 
 .error-text { font-size: 0.82rem; font-weight: 600; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }

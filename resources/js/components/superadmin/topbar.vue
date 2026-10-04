@@ -322,8 +322,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .topbar {
   height: 70px;
-  background: white;
-  border-bottom: 1px solid #e8edf5;
+  margin: 0;
+  background: #FAFFFE;
+  border-bottom: 1px solid #99F6E4;
   padding: 0 28px;
   display: flex;
   align-items: center;
@@ -331,13 +332,13 @@ onBeforeUnmount(() => {
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 1px 4px rgba(15, 45, 82, 0.06);
+  box-shadow: 0 1px 4px rgba(17, 94, 89, 0.06);
+  box-sizing: border-box;
 }
-
 .page-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: #0F2D52;
+  color: #115E59;
   margin: 0;
 }
 
@@ -348,7 +349,7 @@ onBeforeUnmount(() => {
 }
 
 .breadcrumb .sep { margin: 0 5px; }
-.breadcrumb .active { color: #D4AF37; font-weight: 500; }
+.breadcrumb .active { color: #b8901f; font-weight: 500; }
 
 .topbar-right {
   display: flex;
@@ -360,7 +361,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f1f5f9;
+  background: #F0FDFA;
   border: 1px solid transparent;
   border-radius: 10px;
   padding: 8px 14px;
@@ -380,7 +381,7 @@ onBeforeUnmount(() => {
   outline: none;
   font-size: 0.85rem;
   width: 200px;
-  color: #0F2D52;
+  color: #115E59;
 }
 
 .search-box input::placeholder { color: #94a3b8; }
@@ -405,7 +406,7 @@ onBeforeUnmount(() => {
   width: 38px;
   height: 38px;
   border: none;
-  background: #f1f5f9;
+  background: #F0FDFA;
   border-radius: 10px;
   cursor: pointer;
   display: flex;
@@ -415,7 +416,7 @@ onBeforeUnmount(() => {
   transition: all 0.2s;
 }
 
-.icon-btn:hover:not(:disabled) { background: #e2e8f0; color: #0F2D52; }
+.icon-btn:hover:not(:disabled) { background: #CCFBF1; color: #115E59; }
 .icon-btn:disabled { cursor: not-allowed; opacity: 0.5; }
 
 .notif-wrap { position: relative; }
@@ -447,7 +448,7 @@ onBeforeUnmount(() => {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(15,45,82,0.15);
+  box-shadow: 0 10px 30px rgba(17,94,89,0.15);
   z-index: 60;
   display: flex;
   flex-direction: column;
@@ -463,13 +464,13 @@ onBeforeUnmount(() => {
 
 .notif-menu-header strong {
   font-size: 0.9rem;
-  color: #0F2D52;
+  color: #115E59;
 }
 
 .mark-all-btn {
   border: none;
   background: none;
-  color: #D4AF37;
+  color: #b8901f;
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
@@ -517,7 +518,7 @@ onBeforeUnmount(() => {
 .notif-content strong {
   display: block;
   font-size: 0.82rem;
-  color: #0F2D52;
+  color: #115E59;
   margin-bottom: 2px;
 }
 .notif-content p {
@@ -566,7 +567,7 @@ onBeforeUnmount(() => {
 .divider {
   width: 1px;
   height: 32px;
-  background: #e8edf5;
+  background: #CCFBF1;
   margin: 0 6px;
 }
 
@@ -582,14 +583,14 @@ onBeforeUnmount(() => {
   transition: background 0.2s;
 }
 
-.profile:hover { background: #f1f5f9; }
+.profile:hover { background: #F0FDFA; }
 
 .avatar {
   width: 40px;
   height: 40px;
   border-radius: 10px;
   background: linear-gradient(135deg, #D4AF37, #f0cc5a);
-  color: #0F2D52;
+  color: #115E59;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -601,7 +602,7 @@ onBeforeUnmount(() => {
 .profile-info strong {
   display: block;
   font-size: 0.85rem;
-  color: #0F2D52;
+  color: #115E59;
 }
 
 .profile-info small {
@@ -618,7 +619,7 @@ onBeforeUnmount(() => {
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(15,45,82,0.15);
+  box-shadow: 0 10px 30px rgba(17,94,89,0.15);
   padding: 6px;
   z-index: 60;
 }
@@ -640,7 +641,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.profile-menu-item:hover { background: #f1f5f9; color: #0F2D52; }
+.profile-menu-item:hover { background: #F0FDFA; color: #115E59; }
 .profile-menu-item.danger { color: #dc2626; }
 .profile-menu-item.danger:hover { background: #fef2f2; }
 </style>

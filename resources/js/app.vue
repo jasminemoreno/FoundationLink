@@ -15,11 +15,11 @@
   <style>
   /* Optional global styles */
   body {
-    font-family: 'Roboto', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f0f2f5;
-  }
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #FFFFFF;
+}
   
   #app {
     min-height: 100vh;

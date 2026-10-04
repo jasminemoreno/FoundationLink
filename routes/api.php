@@ -1,21 +1,22 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\SuperAdminController;
-use App\Http\Controllers\Api\FoundationController;
-use App\Http\Controllers\Api\DonationController;
-use App\Http\Controllers\Api\FoundationVerificationController;
 use App\Http\Controllers\Api\CampaignController;
-use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\DonorController;
-use App\Http\Controllers\Api\PaymentMethodController;
-use App\Http\Controllers\Api\FoundationPaymentAccountController;
 use App\Http\Controllers\Api\CampaignUpdateController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\DonationController;
+use App\Http\Controllers\Api\DonorController;
+use App\Http\Controllers\Api\FoundationController;
 use App\Http\Controllers\Api\FoundationFollowController;
-use App\Http\Controllers\Api\SuperAdminReportController;
+use App\Http\Controllers\Api\FoundationPaymentAccountController;
+use App\Http\Controllers\Api\FoundationVerificationController;
+use App\Http\Controllers\Api\PaymentMethodController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SuperAdminController;
+use App\Http\Controllers\Api\SuperAdminReportController;
+use App\Http\Controllers\Api\UserController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 /*
 
 |--------------------------------------------------------------------------
@@ -32,6 +33,12 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// Email-change confirmation — public because the user may click this link
+// from a different browser/session than the one that requested the change.
+// The token itself is the proof of identity, same as password-reset above.
+// Shared by foundation admins and donors: the lookup is by token only.
+Route::post('/foundation/profile/email/confirm/{token}', [FoundationController::class, 'confirmEmailChange']);
 
 /*
 |--------------------------------------------------------------------------
@@ -127,6 +134,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [FoundationController::class, 'profile']);
         Route::post('/profile', [FoundationController::class, 'updateProfile']);
         Route::post('/profile/photo', [FoundationController::class, 'uploadPhoto']);
+        Route::post('/profile/email/request', [FoundationController::class, 'requestEmailChange']);
+        Route::post('/profile/email/cancel', [FoundationController::class, 'cancelEmailChange']);
         Route::get('/notifications', [FoundationController::class, 'notifications']);
         Route::get('/notifications/count', [FoundationController::class, 'notificationsCount']);
         Route::post('/notifications/seen', [FoundationController::class, 'markNotificationsSeen']);
@@ -158,6 +167,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [DonorController::class, 'profile']);
         Route::post('/profile', [DonorController::class, 'updateProfile']);
         Route::post('/profile/photo', [DonorController::class, 'uploadPhoto']);
+        Route::post('/profile/email/request', [DonorController::class, 'requestEmailChange']);
+        Route::post('/profile/email/cancel', [DonorController::class, 'cancelEmailChange']);
         Route::get('/payment-methods', [PaymentMethodController::class, 'active']);
         Route::post('/foundations/{id}/follow', [FoundationFollowController::class, 'follow']);
         Route::delete('/foundations/{id}/follow', [FoundationFollowController::class, 'unfollow']);

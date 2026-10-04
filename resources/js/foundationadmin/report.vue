@@ -13,6 +13,18 @@
 
     <div v-else>
 
+      <!-- EXPORT TOOLBAR -->
+      <div class="toolbar">
+        <button class="export-btn" :disabled="isExporting" @click="exportPdf">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          {{ isExporting ? 'Generating PDF...' : 'Export PDF' }}
+        </button>
+      </div>
+
       <!-- SUMMARY CARDS -->
       <div class="stats-row">
         <StatCard
@@ -127,12 +139,16 @@ const perCampaign = ref([])
 const isVerified     = ref(false)
 const checkingStatus = ref(true)
 
+const isExporting    = ref(false)
+const foundationName = ref("")
+
 /* ── FOUNDATION STATUS ── */
 async function loadFoundationStatus() {
   checkingStatus.value = true
   try {
     const res = await api.get("/foundation/dashboard")
     isVerified.value = res.data?.foundation?.status === 'verified'
+    foundationName.value = res.data?.foundation?.name || ""
   } catch (err) {
     console.error("Failed to load foundation status:", err)
     isVerified.value = false
@@ -228,10 +244,249 @@ function toneForType(t) {
   if (t === 'item')     return 'info'
   return 'purple' // both
 }
+
+/* ── PDF EXPORT ── */
+// jsPDF's built-in fonts have no ₱ glyph, so the PDF uses "PHP " instead
+function peso(v) { return "PHP " + formatMoney(v) }
+function pdfText(v) { return String(v ?? "").replace(/₱/g, "PHP ") }
+
+async function exportPdf() {
+  if (isExporting.value) return
+  isExporting.value = true
+
+  try {
+    // UMD build (same approach as the superadmin export)
+    const mod = await import("jspdf/dist/jspdf.umd.min.js")
+    const JsPDF = mod.jsPDF || mod.default?.jsPDF || mod.default
+    const doc = new JsPDF({ unit: "mm", format: "a4" })
+
+    const PAGE_W = 210
+    const PAGE_H = 297
+    const M      = 14
+    const CW     = PAGE_W - M * 2
+    const BOTTOM = PAGE_H - 18
+
+    const NAVY  = [15, 45, 82]
+    const GOLD  = [212, 175, 55]
+    const GRAY  = [100, 116, 139]
+    const BODY  = [71, 85, 105]
+    const LIGHT = [241, 245, 249]
+
+    let y = 0
+
+    function newPage() {
+      doc.addPage()
+      y = M
+    }
+
+    function sectionTitle(text) {
+      if (y + 24 > BOTTOM) newPage()
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(12)
+      doc.setTextColor(...NAVY)
+      doc.text(text, M, y)
+      y += 2.5
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.3)
+      doc.line(M, y, M + CW, y)
+      y += 6
+    }
+
+    function emptyNote(text) {
+      doc.setFont("helvetica", "italic")
+      doc.setFontSize(9)
+      doc.setTextColor(...GRAY)
+      doc.text(text, M, y + 2)
+      y += 12
+    }
+
+    function cellX(col, x) {
+      if (col.align === "right")  return x + col.w - 2
+      if (col.align === "center") return x + col.w / 2
+      return x + 2
+    }
+
+    function drawTableHeader(cols) {
+      doc.setFillColor(...NAVY)
+      doc.rect(M, y, CW, 8, "F")
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(8)
+      doc.setTextColor(255, 255, 255)
+      let x = M
+      cols.forEach(c => {
+        doc.text(c.label.toUpperCase(), cellX(c, x), y + 5.2, { align: c.align || "left" })
+        x += c.w
+      })
+      y += 8
+    }
+
+    function drawTable(cols, rows) {
+      if (y + 8 + 12 > BOTTOM) newPage()
+      drawTableHeader(cols)
+
+      rows.forEach((row, i) => {
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(8.5)
+
+        const lines = cols.map((c, ci) => doc.splitTextToSize(pdfText(row[ci]), c.w - 4))
+        const maxLines = Math.max(...lines.map(l => l.length))
+        const h = maxLines * 3.8 + 4
+
+        if (y + h > BOTTOM) {
+          newPage()
+          drawTableHeader(cols)
+        }
+
+        if (i % 2 === 0) {
+          doc.setFillColor(...LIGHT)
+          doc.rect(M, y, CW, h, "F")
+        }
+
+        doc.setFont("helvetica", "normal")
+        doc.setFontSize(8.5)
+        doc.setTextColor(...BODY)
+        let x = M
+        cols.forEach((c, ci) => {
+          doc.text(lines[ci], cellX(c, x), y + 5, { align: c.align || "left" })
+          x += c.w
+        })
+        y += h
+      })
+
+      y += 8
+    }
+
+    /* HEADER BAND */
+    doc.setFillColor(...NAVY)
+    doc.rect(0, 0, PAGE_W, 30, "F")
+    doc.setFillColor(...GOLD)
+    doc.rect(0, 30, PAGE_W, 1.2, "F")
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(18)
+    doc.setTextColor(255, 255, 255)
+    doc.text("Foundation Report", M, 14)
+
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    doc.text(pdfText(foundationName.value) || "Overview of your foundation's performance", M, 22)
+
+    doc.setFontSize(9)
+    doc.text(
+      "Generated " + new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+      PAGE_W - M, 14, { align: "right" }
+    )
+
+    y = 42
+
+    /* SUMMARY */
+    sectionTitle("Summary")
+    const cards = summaryCards.value
+    const cardGap = 4
+    const cardW = (CW - cardGap * 2) / 3
+    const cardH = 20
+    cards.forEach((s, i) => {
+      const col = i % 3
+      const row = Math.floor(i / 3)
+      const x = M + col * (cardW + cardGap)
+      const cy = y + row * (cardH + cardGap)
+
+      doc.setFillColor(...LIGHT)
+      doc.roundedRect(x, cy, cardW, cardH, 2, 2, "F")
+
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(8)
+      doc.setTextColor(...GRAY)
+      doc.text(s.label.toUpperCase(), x + 4, cy + 7)
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(13)
+      doc.setTextColor(...NAVY)
+      doc.text(pdfText(s.value), x + 4, cy + 15)
+    })
+    y += Math.ceil(cards.length / 3) * (cardH + cardGap) + 6
+
+    /* MONTHLY BREAKDOWN */
+    sectionTitle("Monthly Breakdown (Last 6 Months)")
+    if (monthly.value.length === 0) {
+      emptyNote("No data yet.")
+    } else {
+      drawTable(
+        [
+          { label: "Month",  w: 62, align: "left" },
+          { label: "Raised", w: 60, align: "right" },
+          { label: "Items",  w: 30, align: "right" },
+          { label: "Total",  w: 30, align: "right" },
+        ],
+        monthly.value.map(m => [m.month, peso(m.monetary), m.items ?? 0, m.total ?? 0])
+      )
+    }
+
+    /* CAMPAIGN PERFORMANCE */
+    sectionTitle("Campaign Performance")
+    if (perCampaign.value.length === 0) {
+      emptyNote("No campaigns yet.")
+    } else {
+      drawTable(
+        [
+          { label: "Campaign", w: 52, align: "left" },
+          { label: "Status",   w: 20, align: "left" },
+          { label: "Type",     w: 18, align: "left" },
+          { label: "Goal",     w: 26, align: "right" },
+          { label: "Raised",   w: 26, align: "right" },
+          { label: "Progress", w: 14, align: "right" },
+          { label: "Items",    w: 13, align: "right" },
+          { label: "Donors",   w: 13, align: "right" },
+        ],
+        perCampaign.value.map(c => {
+          const isItem = c.type === "item"
+          return [
+            c.title,
+            statusLabel(c.status),
+            c.type ? c.type.charAt(0).toUpperCase() + c.type.slice(1) : "",
+            isItem ? "-" : peso(c.goal_amount),
+            isItem ? "-" : peso(c.raised),
+            isItem ? "-" : (c.percent ?? 0) + "%",
+            c.items ?? 0,
+            c.donors ?? 0,
+          ]
+        })
+      )
+    }
+
+    /* PAGE FOOTERS */
+    const pageCount = doc.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.3)
+      doc.line(M, PAGE_H - 13, M + CW, PAGE_H - 13)
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(8)
+      doc.setTextColor(...GRAY)
+      doc.text("FoundationLink - Foundation Admin Report", M, PAGE_H - 8)
+      doc.text(`Page ${i} of ${pageCount}`, PAGE_W - M, PAGE_H - 8, { align: "right" })
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10)
+    doc.save(`foundation-report-${stamp}.pdf`)
+  } catch (err) {
+    console.error("Failed to export PDF:", err)
+    alert("Could not generate the PDF. Please try again.")
+  } finally {
+    isExporting.value = false
+  }
+}
 </script>
 
 <style scoped>
 .page { padding: 28px; background: #f8fafc; min-height: 100%; }
+
+/* EXPORT BUTTON */
+.toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.export-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 10px; background: #0F2D52; color: #fff; font-size: 0.83rem; font-weight: 700; cursor: pointer; transition: background 0.2s ease, opacity 0.2s ease; }
+.export-btn:hover:not(:disabled) { background: #163d6e; }
+.export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .stats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; }
 

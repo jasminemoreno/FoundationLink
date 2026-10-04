@@ -41,22 +41,22 @@ const year = new Date().getFullYear()
 </script>
 
 <style scoped>
-.footer { background: #0f2f75; color: white; margin-top: auto; }
+.footer { background: linear-gradient(180deg, #0873b0 0%, #066499 100%); color: white; margin-top: auto; }
 .footer-inner { max-width: 1200px; margin: 0 auto; padding: 36px 24px; display: flex; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
 
 .footer-brand { display: flex; align-items: flex-start; gap: 12px; max-width: 300px; }
 .footer-logo  { width: 40px; height: 40px; object-fit: contain; filter: brightness(1.3); flex-shrink: 0; }
 .footer-name  { font-size: 1.05rem; font-weight: 900; display: block; }
-.footer-accent { color: #7eb0ff; }
-.footer-desc  { font-size: 0.76rem; color: rgba(255,255,255,0.6); line-height: 1.6; margin-top: 6px; }
+.footer-accent { color: #d4f1ff; }
+.footer-desc  { font-size: 0.76rem; color: rgba(255,255,255,0.92); line-height: 1.6; margin-top: 6px; }
 
 .footer-links { display: flex; gap: 48px; }
 .fl-col   { display: flex; flex-direction: column; gap: 9px; }
-.fl-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #7eb0ff; margin-bottom: 4px; }
-.fl-link  { font-size: 0.82rem; color: rgba(255,255,255,0.68); text-decoration: none; transition: color 0.15s; }
-.fl-link:hover { color: white; }
+.fl-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #d4f1ff; margin-bottom: 4px; }
+.fl-link  { font-size: 0.82rem; color: rgba(255,255,255,0.95); text-decoration: none; transition: color 0.15s; }
+.fl-link:hover { color: white; text-decoration: underline; }
 
-.footer-bottom { max-width: 1200px; margin: 0 auto; padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: rgba(255,255,255,0.5); flex-wrap: wrap; gap: 8px; }
+.footer-bottom { max-width: 1200px; margin: 0 auto; padding: 14px 24px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; font-size: 0.76rem; color: rgba(255,255,255,0.88); flex-wrap: wrap; gap: 8px; }
 
 @media (max-width: 700px) {
   .footer-inner { flex-direction: column; }
