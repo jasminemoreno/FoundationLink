@@ -24,7 +24,7 @@ async function loadFoundation(force = false) {
 
 function getLogoUrl() {
   if (!foundation.value?.logo) return null
-  return `http://127.0.0.1:8000/storage/${foundation.value.logo}`
+  return `/storage/${foundation.value.logo}`
 }
 
 export function useFoundation() {

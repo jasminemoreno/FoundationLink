@@ -115,7 +115,7 @@ class FoundationController extends Controller
 
                 // 🖼️ logo — hardcoded base URL to match the pattern used
                 // elsewhere in the frontend (getImage() helpers)
-                'logo' => $f->logo ? 'http://127.0.0.1:8000/storage/' . $f->logo : null,
+                'logo' => $f->logo ? '/storage/' . $f->logo : null,
 
                 'status' => $f->status,
                 'created_at' => $f->created_at,
@@ -342,7 +342,8 @@ class FoundationController extends Controller
        REQUEST EMAIL CHANGE
        Stores the new address as pending_email and emails a
        confirmation link to it. The live `email` column is not
-       touched until the link is clicked.
+       touched until the user presses "Yes, confirm" on the
+       page that link opens.
     ══════════════════════════════ */
     public function requestEmailChange(Request $request)
     {
@@ -396,6 +397,7 @@ class FoundationController extends Controller
 
     /* ══════════════════════════════
        CANCEL PENDING EMAIL CHANGE
+       (from inside the logged-in profile page)
     ══════════════════════════════ */
     public function cancelEmailChange()
     {
@@ -409,16 +411,52 @@ class FoundationController extends Controller
     }
 
     /* ══════════════════════════════
-       CONFIRM EMAIL CHANGE
-       Public route (no auth) — the token itself is the proof,
-       since the admin may click the link from a different
+       EMAIL CHANGE — PUBLIC (TOKEN) ENDPOINTS
+       These three are public (no auth) — the token itself is the
+       proof, since the user may open the link from a different
        browser/session than the one that requested the change.
+       Shared by foundation admins and donors (lookup is by token).
     ══════════════════════════════ */
-    public function confirmEmailChange(Request $request, $token)
+
+    /** Find the user that owns a still-pending email change for this token. */
+    private function findPendingEmailChange(string $token): ?User
     {
-        $user = User::where('email_change_token', hash('sha256', $token))
+        return User::where('email_change_token', hash('sha256', $token))
             ->whereNotNull('pending_email')
             ->first();
+    }
+
+    /**
+     * PREVIEW — read-only. Lets the Confirm/Cancel page show which
+     * address the change is for. Changes nothing.
+     */
+    public function previewEmailChange($token)
+    {
+        $user = $this->findPendingEmailChange($token);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'This verification link is invalid or has already been used.',
+            ], 404);
+        }
+
+        if ($user->email_change_expires_at && now()->greaterThan($user->email_change_expires_at)) {
+            return response()->json([
+                'message' => 'This verification link has expired. Please request a new email change.',
+            ], 410);
+        }
+
+        return response()->json([
+            'new_email' => $user->pending_email,
+        ]);
+    }
+
+    /**
+     * "YES, CONFIRM" — swaps pending_email into email.
+     */
+    public function confirmEmailChange(Request $request, $token)
+    {
+        $user = $this->findPendingEmailChange($token);
 
         if (!$user) {
             return response()->json([
@@ -435,6 +473,17 @@ class FoundationController extends Controller
         $oldEmail = $user->email;
         $newEmail = $user->pending_email;
 
+        // Someone else may have registered this address since the request was made.
+        $emailTaken = User::where('email', $newEmail)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($emailTaken) {
+            return response()->json([
+                'message' => 'This email is already in use by another account.',
+            ], 422);
+        }
+
         $user->update([
             'email' => $newEmail,
             'pending_email' => null,
@@ -442,13 +491,43 @@ class FoundationController extends Controller
             'email_change_expires_at' => null,
         ]);
 
+        // The change is already saved at this point, so a mail failure
+        // must not turn the response into an error.
         if ($oldEmail) {
-            Mail::to($oldEmail)->send(new FoundationEmailChangeNotice($user, $newEmail));
+            try {
+                Mail::to($oldEmail)->send(new FoundationEmailChangeNotice($user, $newEmail));
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return response()->json([
             'message' => "Your email has been updated to {$newEmail}.",
             'new_email' => $newEmail,
+        ]);
+    }
+
+    /**
+     * "NO, CANCEL" — clears the pending change; the account email stays as it is.
+     */
+    public function declineEmailChange($token)
+    {
+        $user = $this->findPendingEmailChange($token);
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'This verification link is invalid or has already been used.',
+            ], 404);
+        }
+
+        $user->update([
+            'pending_email' => null,
+            'email_change_token' => null,
+            'email_change_expires_at' => null,
+        ]);
+
+        return response()->json([
+            'message' => 'The email change was cancelled. Your account email has not been changed.',
         ]);
     }
 

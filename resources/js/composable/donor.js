@@ -2,7 +2,7 @@
 // Import these instead of redefining getImage/formatMoney/formatDate in every page:
 //   import { getImage, formatMoney, formatDate } from '@/utils/donor'
 
-const STORAGE_BASE = 'http://127.0.0.1:8000/storage/'
+const STORAGE_BASE = '/storage/'
 
 export function getImage(path) {
   if (!path) return ''

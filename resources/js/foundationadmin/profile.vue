@@ -63,9 +63,13 @@
             <button
               v-else-if="!emailEditing"
               type="button"
-              class="link-btn"
+              class="btn-change-email"
               @click="emailEditing = true"
             >
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <polyline points="3 7 12 13 21 7"/>
+              </svg>
               Change email
             </button>
             <p v-if="!emailEditing && !form.pending_email" class="field-hint">
@@ -80,7 +84,26 @@
               </div>
               <div class="form-group" style="margin-bottom: 10px;">
                 <label>Current Password</label>
-                <input v-model="emailPassword" type="password" />
+                <div class="pw-wrap">
+                  <input v-model="emailPassword" :type="showEmailPassword ? 'text' : 'password'" />
+                  <button
+                    type="button"
+                    class="pw-toggle"
+                    @click="showEmailPassword = !showEmailPassword"
+                    :aria-label="showEmailPassword ? 'Hide password' : 'Show password'"
+                  >
+                    <!-- eye (password hidden) -->
+                    <svg v-if="!showEmailPassword" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <!-- eye with slash (password visible) -->
+                    <svg v-else width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <p v-if="emailError" class="error-text">{{ emailError }}</p>
@@ -180,6 +203,7 @@ const passwordSuccess   = ref('')
 const emailEditing        = ref(false)
 const newEmail            = ref('')
 const emailPassword       = ref('')
+const showEmailPassword   = ref(false)
 const emailError          = ref('')
 const emailSuccess        = ref('')
 const sendingEmailRequest = ref(false)
@@ -197,7 +221,7 @@ const initials = computed(() => {
 
 function getImage(path) {
   if (!path) return null
-  return `http://127.0.0.1:8000/storage/${path}`
+  return `/storage/${path}`
 }
 
 async function loadProfile() {
@@ -319,6 +343,7 @@ function closeEmailEdit() {
   emailEditing.value = false
   newEmail.value = ''
   emailPassword.value = ''
+  showEmailPassword.value = false
   emailError.value = ''
 }
 
@@ -460,6 +485,32 @@ async function cancelPendingEmail() {
 .btn-save-sm { border: none; background: #1a56c4; color: white; min-width: 150px; }
 .btn-save-sm:hover:not(:disabled) { background: #133c8a; }
 .btn-save-sm:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* CHANGE EMAIL BUTTON (trigger only) */
+.btn-change-email {
+  margin-top: 10px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; border-radius: 10px;
+  border: 1px solid #bfdbfe; background: #eff6ff; color: #1a56c4;
+  font-size: 0.82rem; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+.btn-change-email:hover {
+  background: #1a56c4; border-color: #1a56c4; color: white;
+  box-shadow: 0 4px 12px rgba(26,86,196,0.25);
+}
+.btn-change-email:active { transform: translateY(1px); box-shadow: none; }
+.btn-change-email:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(26,86,196,0.25); }
+
+/* SHOW/HIDE PASSWORD (change-email field only) */
+.pw-wrap { position: relative; }
+.pw-wrap input { padding-right: 42px; }
+.pw-toggle {
+  position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+  background: none; border: none; padding: 4px; cursor: pointer;
+  color: #94a3b8; display: flex; align-items: center; justify-content: center;
+}
+.pw-toggle:hover { color: #1a56c4; }
 
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; }

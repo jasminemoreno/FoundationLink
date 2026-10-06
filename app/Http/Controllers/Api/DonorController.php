@@ -212,6 +212,46 @@ class DonorController extends Controller
     }
 
     /* ══════════════════════════════
+       CANCEL AN ITEM DONATION (donor-initiated)
+       Rules: the donor must own it, it must be an item donation,
+       and it must still be pending. Monetary donations are not
+       cancellable by donors — payment happens outside the system,
+       so only the foundation admin can mark those cancelled.
+       Item donations never touch campaigns.current_amount, so no
+       campaign total needs adjusting here.
+    ══════════════════════════════ */
+    public function cancelItemDonation($id)
+    {
+        $donor = auth()->user();
+
+        $donation = Donation::with('campaign.foundation')
+            ->where('id', $id)
+            ->where('donor_id', $donor->id)
+            ->firstOrFail();
+
+        if ($donation->type !== 'item') {
+            return response()->json([
+                'message' => 'Only item donations can be cancelled.',
+            ], 422);
+        }
+
+        if ($donation->status !== 'pending') {
+            return response()->json([
+                'message' => 'Only pending donations can be cancelled.',
+            ], 422);
+        }
+
+        $donation->update(['status' => 'cancelled']);
+
+        $this->notifyFoundationOfCancellation($donation->campaign, $donor, $donation);
+
+        return response()->json([
+            'message' => 'Your item donation has been cancelled.',
+            'donation' => $this->formatDonation($donation),
+        ]);
+    }
+
+    /* ══════════════════════════════
        NOTIFY FOUNDATION ADMIN OF A NEW DONATION
     ══════════════════════════════ */
     private function notifyFoundationOfDonation(Campaign $campaign, $donor, string $summary): void
@@ -229,6 +269,29 @@ class DonorController extends Controller
             'type' => 'donation_received',
             'title' => 'New donation received',
             'message' => "{$donorName} donated {$summary} to \"{$campaign->title}\".",
+            'notifiable_id' => $campaign->id,
+            'notifiable_type' => 'campaign',
+        ]);
+    }
+
+    /* ══════════════════════════════
+       NOTIFY FOUNDATION ADMIN THAT A DONOR CANCELLED AN ITEM DONATION
+    ══════════════════════════════ */
+    private function notifyFoundationOfCancellation(Campaign $campaign, $donor, Donation $donation): void
+    {
+        $foundation = $campaign->foundation;
+
+        if (!$foundation || !$foundation->user_id) {
+            return;
+        }
+
+        $donorName = trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) ?: 'A donor';
+
+        Notification::create([
+            'user_id' => $foundation->user_id,
+            'type' => 'donation_cancelled',
+            'title' => 'Item donation cancelled',
+            'message' => "{$donorName} cancelled their item donation of {$donation->item_quantity}x {$donation->item_name} to \"{$campaign->title}\".",
             'notifiable_id' => $campaign->id,
             'notifiable_type' => 'campaign',
         ]);
@@ -683,11 +746,14 @@ class DonorController extends Controller
             'delivery_method' => $d->delivery_method,
             'delivery_address' => $d->delivery_address,
             'notes' => $d->notes,
+            'proof_photo' => $d->proof_photo,
+            'item_photo' => $d->item_photo,
             'donated_at' => $d->donated_at ?? $d->created_at,
             'campaign' => [
                 'id' => $d->campaign->id,
                 'title' => $d->campaign->title,
                 'type' => $d->campaign->type,
+                'foundation' => $d->campaign->foundation?->name,
             ],
         ];
     }

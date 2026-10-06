@@ -25,7 +25,7 @@ class DonationController extends Controller
     private function donorPhotoUrl($donor): ?string
     {
         return $donor && $donor->profile_photo
-            ? 'http://127.0.0.1:8000/storage/' . $donor->profile_photo
+            ? '/storage/' . $donor->profile_photo
             : null;
     }
 

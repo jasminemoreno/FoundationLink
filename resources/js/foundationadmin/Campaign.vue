@@ -1065,7 +1065,7 @@ function percent(c) {
 
 function getImage(path) {
   if (!path) return ""
-  return `http://127.0.0.1:8000/storage/${path}`
+  return `/storage/${path}`
 }
 
 function formatMoney(v) { return Number(v || 0).toLocaleString() }

@@ -27,7 +27,7 @@ class UserController extends Controller
                     'color' => $this->avatarColor($u->id),
                     // 🖼️ profile photo — hardcoded base URL to match the pattern
                     // used elsewhere in the frontend (getImage() helpers)
-                    'profile_photo' => $u->profile_photo ? 'http://127.0.0.1:8000/storage/' . $u->profile_photo : null,
+                    'profile_photo' => $u->profile_photo ? '/storage/' . $u->profile_photo : null,
                 ];
             });
 

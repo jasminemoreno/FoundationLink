@@ -127,7 +127,7 @@
     return Math.round((current / goal) * 100)
   })
   
-  function getImage(path) { return path ? `http://127.0.0.1:8000/storage/${path}` : '' }
+  function getImage(path) { return path ? `/storage/${path}` : '' }
   function formatMoney(v) { return Number(v || 0).toLocaleString() }
   function formatDate(d) {
     if (!d) return '—'

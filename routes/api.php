@@ -38,7 +38,12 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 // from a different browser/session than the one that requested the change.
 // The token itself is the proof of identity, same as password-reset above.
 // Shared by foundation admins and donors: the lookup is by token only.
+//   GET  = look up the pending change (changes nothing, used to show the Confirm/Cancel page)
+//   POST confirm = "Yes, confirm" — swaps pending_email into email
+//   POST decline = "No, cancel"   — clears the pending change
+Route::get('/foundation/profile/email/confirm/{token}', [FoundationController::class, 'previewEmailChange']);
 Route::post('/foundation/profile/email/confirm/{token}', [FoundationController::class, 'confirmEmailChange']);
+Route::post('/foundation/profile/email/decline/{token}', [FoundationController::class, 'declineEmailChange']);
 
 /*
 |--------------------------------------------------------------------------
@@ -161,6 +166,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/campaigns/{id}/updates', [CampaignUpdateController::class, 'donorIndex']);
         Route::post('/donate', [DonorController::class, 'donate']);
         Route::get('/donations', [DonorController::class, 'myDonations']);
+        Route::patch('/donations/{id}/cancel', [DonorController::class, 'cancelItemDonation']);
         Route::get('/notifications', [DonorController::class, 'notifications']);
         Route::get('/notifications/count', [DonorController::class, 'notificationsCount']);
         Route::post('/notifications/seen', [DonorController::class, 'markNotificationsSeen']);

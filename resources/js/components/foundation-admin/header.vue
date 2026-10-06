@@ -185,7 +185,7 @@ const initials = computed(() => {
 
 const avatarUrl = computed(() => {
   if (!user.value?.profile_photo) return null
-  return `http://127.0.0.1:8000/storage/${user.value.profile_photo}`
+  return `/storage/${user.value.profile_photo}`
 })
 
 /* ══════════════════════════════

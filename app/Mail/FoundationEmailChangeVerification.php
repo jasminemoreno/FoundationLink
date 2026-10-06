@@ -24,18 +24,20 @@ class FoundationEmailChangeVerification extends Mailable
 
     public function build()
     {
-        // NOTE: hardcoded to match the frontend-URL pattern already used
-        // by the password-reset flow elsewhere in this project. If that
-        // flow reads its base URL from config/env instead, point this
-        // at the same source so there's only one place to change it.
-        $verifyUrl = 'http://localhost:5173/verify-email-change/' . $this->token;
+        // Base URL of the page that opens your Vue app (the same address you
+        // type in the browser to see the login page). Set FRONTEND_URL in .env
+        // to change it without editing this file.
+        $base = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+        $pageUrl = $base . '/verify-email-change/' . $this->token;
 
         return $this->subject('Confirm your new email address — FoundationLink')
             ->view('emails.foundation-email-change-verification')
             ->with([
                 'user' => $this->user,
-                'verifyUrl' => $verifyUrl,
                 'newEmail' => $this->newEmail,
+                'confirmUrl' => $pageUrl . '?action=confirm',
+                'cancelUrl' => $pageUrl . '?action=cancel',
             ]);
     }
 }
