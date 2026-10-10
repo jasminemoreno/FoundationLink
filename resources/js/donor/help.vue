@@ -134,16 +134,16 @@ const faqs = [
   { category: 'getting-started', q: 'How do I find campaigns to support?', a: 'Browse the Campaigns page to see all active campaigns. You can filter by type (monetary or item) to find causes that match what you want to give.' },
 
   // DONATIONS
-  { category: 'donations', q: 'How do I make a monetary donation?', a: 'Go to the Campaigns page, find a campaign you want to support, click "Donate Now", select the amount (or enter a custom amount), and submit. The foundation will be notified.' },
-  { category: 'donations', q: 'What payment methods are accepted?', a: 'Currently donations are recorded through the platform and payment arrangements are made directly with the foundation. Contact the foundation for payment details.' },
+  { category: 'donations', q: 'How do I make a monetary donation?', a: 'Go to the Campaigns page, find a campaign that accepts money, and click "Donate Now". Choose or enter an amount, pick a payment method, send the payment to the account details shown, then upload a screenshot of your receipt as proof of payment and submit. The foundation is notified and will confirm once it has checked your proof.' },
+  { category: 'donations', q: 'What payment methods are accepted?', a: 'Each campaign lists the payment methods its foundation accepts (for example GCash, PayMaya, PayPal, BDO, or BPI). After you pick one, the foundation\'s account name and number are shown. You send the payment yourself, outside FoundationLink, and upload proof of payment. FoundationLink does not process the payment.' },
   { category: 'donations', q: 'Can I see my donation history?', a: 'Yes! Go to My Donations to see all your past and current donations, their status, and details.' },
   { category: 'donations', q: 'What does "Pending" status mean?', a: '"Pending" means your donation has been submitted and is waiting for the foundation to confirm receipt. Once they mark it as received, the status will update to "Received".' },
   { category: 'donations', q: 'Can I cancel a donation?', a: 'Once a donation is submitted, cancellation depends on the foundation. Contact the foundation directly if you need to cancel.' },
 
   // ITEMS
-  { category: 'items', q: 'How do I donate items?', a: 'Find a campaign that accepts item donations, click "Donate Now", select "Item", fill in the item name, quantity, and description, then submit. The foundation will contact you for drop-off arrangements.' },
+  { category: 'items', q: 'How do I donate items?', a: 'Find a campaign that accepts item donations and click "Donate Now". Enter the item name and quantity, add a description if you like, and upload a photo of the item. Then choose Drop Off or Pick Up (for pick-up, enter your address) and submit. The foundation reviews your donation and marks it as received.' },
   { category: 'items', q: 'What kinds of items can I donate?', a: 'It depends on what each campaign needs. Common items include clothes, food, medicine, school supplies, and household goods. Check the campaign description for specific needs.' },
-  { category: 'items', q: 'Where do I drop off my items?', a: 'After submitting an item donation, the foundation will reach out to arrange drop-off or pick-up. You can also add a note in your donation with your contact details.' },
+  { category: 'items', q: 'Where do I drop off my items?', a: 'If you choose Drop Off, the foundation\'s address is shown in the donation form. If you choose Pick Up, enter your address and the foundation will collect the items from you. You can also add a message to the foundation with any extra details.' },
 
   // ACCOUNT
   { category: 'account', q: 'How do I update my profile?', a: 'Go to My Profile from the top navigation. You can update your name, phone, address, gender, and birthdate there.' },
@@ -159,7 +159,8 @@ const faqs = [
   // SECURITY
   { category: 'security', q: 'Is my personal information safe?', a: 'Yes. We take your privacy seriously. Your personal information is encrypted and never shared with third parties without your consent.' },
   { category: 'security', q: 'Are the foundations on FoundationLink verified?', a: 'Yes. All foundations go through a verification process by our administrators before they can create campaigns and receive donations.' },
-  { category: 'security', q: 'What should I do if I notice suspicious activity?', a: 'Contact our support team immediately at support@foundationlink.com. Change your password right away from your Profile page.' },
+  { category: 'security', q: 'How do I report a foundation, campaign, or account?', a: 'Email the platform administrator through Contact Support. Include the name of the foundation or account, the campaign involved, and what happened. The Superadmin reviews the report and can suspend the account if needed.' },
+  { category: 'security', q: 'What should I do if I notice suspicious activity?', a: 'Contact our support team immediately at jmoreno4@ssct.edu.ph. Change your password right away from your Profile page.' },
 ]
 
 const filteredFaqs = computed(() => {

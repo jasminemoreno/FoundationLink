@@ -154,10 +154,12 @@ const faqs = [
   { category: 'donations', q: 'How do I confirm a donation was received?', a: 'Go to Donations and update the status once you\'ve confirmed receipt of the payment or item.' },
   { category: 'donations', q: 'What do the delivery methods mean for item donations?', a: '"Drop Off" means the donor brings items to your foundation\'s address. "Pick Up" means your foundation collects items from the donor\'s location. You choose which ones to accept per campaign.' },
   { category: 'donations', q: 'Can I see who has donated to my campaigns?', a: 'Yes, the Donors page shows everyone who has donated, along with their donation history with your foundation.' },
+  { category: 'donations', q: 'What should I do if a donation looks fake or suspicious?', a: 'If the proof of payment or the item photo looks fake, update the donation status to "Cancelled" on the Donations page. To report the donor, email the platform administrator through Contact Support with the donor\'s name or email and what happened.' },
 
   // ACCOUNT
   { category: 'account', q: 'How do I change my foundation\'s logo or cover photo?', a: 'Go to Settings and upload a new logo or cover photo. The old one will be replaced automatically.' },
   { category: 'account', q: 'Can I have more than one admin per foundation?', a: 'Currently, each foundation is linked to a single admin account created at registration.' },
+  { category: 'account', q: 'How do I report a problem with a donor or another account?', a: 'Email the platform administrator through Contact Support. Include the name or email of the account, the campaign or donation involved, and what happened. The Superadmin reviews the report and can suspend the account if needed.' },
   { category: 'account', q: 'How do I logout?', a: 'Click the logout button at the bottom of the sidebar.' },
 ]
 

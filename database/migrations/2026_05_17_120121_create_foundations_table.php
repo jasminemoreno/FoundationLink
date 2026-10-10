@@ -16,9 +16,7 @@ return new class extends Migration {
                 ->onDelete('cascade');
 
             // 🏷️ Foundation category (Health, Education, etc.)
-            $table->foreignId('category_id')
-                ->constrained('categories')
-                ->nullOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained('categories')->nullOnDelete();
 
             // 🏛️ Basic info
             $table->string('name');

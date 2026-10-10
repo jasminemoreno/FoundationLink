@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('title');
             $table->text('message');
             $table->string('type');
-            // e.g. donation_approved, donation_rejected,
+            // e.g. donation_recieved, donation_cancelled,
             //      item_received, campaign_update, etc.
             $table->morphs('notifiable');
             // notifiable_type + notifiable_id → links to any model

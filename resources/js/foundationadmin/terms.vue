@@ -43,7 +43,7 @@ const sections = [
   {
     heading: '8. Contact',
     body: 'Questions about these Terms can be sent to',
-    link: { text: 'yoshiime77@gmail.com.com', href: 'mailto:yoshiime77@gmail.com' }
+    link: { text: 'jmoreno4@ssct.edu.ph', href: 'mailto:jmoreno4@ssct.edu.ph' }
   },
 ]
 </script>

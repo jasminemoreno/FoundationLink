@@ -212,8 +212,6 @@ function toggleNotifs() {
 function getNotifLink(n) {
   switch (n.type) {
     case 'donation_received':
-    case 'donation_approved':
-    case 'donation_rejected':
       // NOTE: route is registered singular ('donation'), not 'donations'
       return '/foundation/donation'
     case 'campaign_update':

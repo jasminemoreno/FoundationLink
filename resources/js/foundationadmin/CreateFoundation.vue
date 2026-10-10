@@ -65,11 +65,6 @@
 
         <!-- STRUCTURED ADDRESS -->
         <div class="field">
-          <label>Region</label>
-          <input v-model="form.region" type="text" class="field-input" placeholder="e.g. Region XI" />
-        </div>
-
-        <div class="field">
           <label>Province</label>
           <input v-model="form.province" type="text" class="field-input" placeholder="e.g. Davao del Sur" />
         </div>
@@ -120,7 +115,6 @@ const form = reactive({
   name:        '',
   description: '',
   category_id: '',   // ← new
-  region:      '',
   province:    '',
   city:        '',
   barangay:    '',
@@ -158,7 +152,6 @@ async function submitFoundation() {
   if (
     !form.name      ||
     !form.description ||
-    !form.region    ||
     !form.province  ||
     !form.city      ||
     !form.barangay  ||
@@ -184,7 +177,6 @@ async function submitFoundation() {
       category_id: form.category_id || null,
       name:        form.name,
       description: form.description,
-      region:      form.region,
       province:    form.province,
       city_municipality: form.city,
       barangay:    form.barangay,
