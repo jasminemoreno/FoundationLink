@@ -60,6 +60,23 @@ class Foundation extends Model
         return !in_array($this->status, self::UNFINISHED_SIGN_UP_STATUSES, true);
     }
 
+    /**
+     * Why Settings are locked for this foundation, or null if they can be edited.
+     * Settings open once the super admin has approved the foundation:
+     *   'finish_signup' - details or documents not sent yet
+     *   'under_review'  - waiting for the super admin's approval
+     *   'rejected'      - fix details with "Edit & Resubmit" on the dashboard instead
+     */
+    public function settingsLockReason(): ?string
+    {
+        return match (true) {
+            !$this->isSignUpFinished() => 'finish_signup',
+            $this->status === 'under_review' => 'under_review',
+            $this->status === 'rejected' => 'rejected',
+            default => null, // verified (and suspended, as before)
+        };
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

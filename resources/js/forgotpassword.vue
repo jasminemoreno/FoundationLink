@@ -14,7 +14,8 @@
             <input
               v-model="email"
               type="email"
-              placeholder="Email address"
+              placeholder="example@email.com"
+              aria-label="Email address"
               autocomplete="email"
               @focus="focused = true"
               @blur="focused = false"
@@ -81,6 +82,22 @@
             />
           </div>
 
+          <!-- Live rules: same as sign-up (the server checks them too) -->
+          <ul class="password-checklist" aria-live="polite">
+            <li :class="{ met: passwordChecks.length }">
+              <span class="check-icon" aria-hidden="true">{{ passwordChecks.length ? '✓' : '○' }}</span>
+              At least 12 characters
+            </li>
+            <li :class="{ met: passwordChecks.number }">
+              <span class="check-icon" aria-hidden="true">{{ passwordChecks.number ? '✓' : '○' }}</span>
+              At least one number (0–9)
+            </li>
+            <li :class="{ met: passwordChecks.special }">
+              <span class="check-icon" aria-hidden="true">{{ passwordChecks.special ? '✓' : '○' }}</span>
+              At least one special character (e.g. ! @ # $ %)
+            </li>
+          </ul>
+
           <div class="input-group" :class="{ focused: focusedField === 'confirm' }">
             <div class="input-icon"><img src="@/assets/icons/padlock.png" alt="" /></div>
             <input
@@ -94,9 +111,16 @@
             />
           </div>
 
+          <ul v-if="passwordConfirmation" class="password-checklist" aria-live="polite">
+            <li :class="{ met: passwordsMatch }">
+              <span class="check-icon" aria-hidden="true">{{ passwordsMatch ? '✓' : '✕' }}</span>
+              {{ passwordsMatch ? 'Passwords match' : 'Passwords do not match yet' }}
+            </li>
+          </ul>
+
           <p v-if="error" class="error-text">{{ error }}</p>
 
-          <button class="btn-login" @click="resetPassword" :disabled="isLoading">
+          <button class="btn-login" @click="resetPassword" :disabled="isLoading || !canReset">
             <span v-if="!isLoading">Reset Password</span>
             <span v-else class="spinner" />
           </button>
@@ -119,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 
@@ -131,6 +155,17 @@ const otp = ref('')
 const resetToken = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
+
+// Same rules as sign-up, shown live while typing (foundation admins and donors share this page)
+const passwordChecks = computed(() => ({
+  length: password.value.length >= 12,
+  number: /\d/.test(password.value),
+  special: /[^a-zA-Z0-9]/.test(password.value),
+}))
+const passwordsMatch = computed(() => password.value.length > 0 && password.value === passwordConfirmation.value)
+const canReset = computed(() =>
+  passwordChecks.value.length && passwordChecks.value.number && passwordChecks.value.special && passwordsMatch.value
+)
 
 const focused = ref(false)
 const focusedField = ref(null)
@@ -225,6 +260,12 @@ async function resetPassword() {
 .btn-login { width: 100%; height: 52px; background: #1a8a52; color: #fff; border: none; border-radius: 10px; font-size: 15.5px; font-weight: 800; font-family: 'Nunito', sans-serif; letter-spacing: 0.3px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 22px; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow: 0 4px 14px rgba(26, 138, 82, 0.3); }
 .btn-login:hover:not(:disabled) { background: #157042; box-shadow: 0 6px 20px rgba(26, 138, 82, 0.4); transform: translateY(-1px); }
 .btn-login:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* Live password rules */
+.password-checklist { width: 100%; list-style: none; padding: 0; margin: -6px 0 14px; display: flex; flex-direction: column; gap: 4px; }
+.password-checklist li { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #5b6b82; transition: color 0.15s; }
+.password-checklist li.met { color: #047857; }
+.check-icon { width: 16px; text-align: center; font-weight: 800; }
 .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .register-row { font-size: 13px; font-weight: 600; color: #9aaea6; }

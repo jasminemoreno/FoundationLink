@@ -64,15 +64,44 @@ class SettingsLockTest extends TestCase
         $this->assertSame(0, FoundationPaymentAccount::count());
     }
 
-    public function test_settings_unlock_once_documents_are_sent(): void
+    public function test_settings_stay_locked_while_waiting_for_approval_or_after_rejection(): void
     {
-        foreach (['under_review', 'verified'] as $status) {
+        foreach (['under_review', 'rejected'] as $status) {
+            Foundation::where('user_id', $this->admin->id)->forceDelete();
+            $foundation = $this->makeFoundation($status);
+
+            $this->saveSettings()->assertStatus(403);
+            $this->savePaymentAccount()->assertStatus(403);
+            $this->assertSame('Helping Hands', $foundation->fresh()->name, "Settings should be locked when {$status}");
+        }
+        $this->assertSame(0, FoundationPaymentAccount::count());
+    }
+
+    public function test_settings_unlock_once_the_foundation_is_approved(): void
+    {
+        foreach (['verified', 'suspended'] as $status) {
             Foundation::where('user_id', $this->admin->id)->forceDelete();
             $foundation = $this->makeFoundation($status);
 
             $this->saveSettings()->assertOk();
             $this->assertSame('Renamed', $foundation->fresh()->name, "Settings should save when {$status}");
             $this->savePaymentAccount()->assertOk();
+        }
+    }
+
+    public function test_dashboard_tells_the_settings_page_why_it_is_locked(): void
+    {
+        $expected = [
+            'pending_verification' => 'finish_signup',
+            'under_review' => 'under_review',
+            'rejected' => 'rejected',
+            'verified' => null,
+        ];
+        foreach ($expected as $status => $reason) {
+            Foundation::where('user_id', $this->admin->id)->forceDelete();
+            $this->makeFoundation($status);
+            $this->getJson('/api/foundation/dashboard')->assertOk()
+                ->assertJsonPath('settings_locked', $reason);
         }
     }
 }

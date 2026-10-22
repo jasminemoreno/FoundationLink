@@ -5,19 +5,41 @@
 
     <EmptyState v-if="isLoading" loading message="Loading settings..." />
 
-    <!-- LOCKED: sign-up not finished (no foundation yet, or documents not uploaded) -->
-    <div v-else-if="setupStep" class="panel lock-panel">
+    <!-- LOCKED until the super admin approves the foundation (the server refuses saves too) -->
+    <div v-else-if="lockReason" class="panel lock-panel">
       <div class="lock-icon">🔒</div>
       <h3 class="lock-title">Settings are locked</h3>
-      <p class="lock-text">
-        Please finish signing up first. You can edit your foundation's settings once you have
-        {{ setupStep === 'create_foundation'
-          ? "added your foundation's details and uploaded your verification documents."
-          : "uploaded your verification documents." }}
-      </p>
-      <router-link class="btn-save lock-btn" :to="setupStep === 'create_foundation' ? '/foundation/create' : '/foundation/verification'">
-        {{ setupStep === 'create_foundation' ? 'Add your foundation' : 'Upload your documents' }}
-      </router-link>
+
+      <!-- sign-up not finished: no foundation yet, or documents not uploaded -->
+      <template v-if="lockReason === 'finish_signup'">
+        <p class="lock-text">
+          Please finish signing up first. You can edit your foundation's settings once you have
+          {{ setupStep === 'create_foundation'
+            ? "added your foundation's details and uploaded your verification documents, and the super administrator has approved your foundation."
+            : "uploaded your verification documents and the super administrator has approved your foundation." }}
+        </p>
+        <router-link class="btn-save lock-btn" :to="setupStep === 'create_foundation' ? '/foundation/create' : '/foundation/verification'">
+          {{ setupStep === 'create_foundation' ? 'Add your foundation' : 'Upload your documents' }}
+        </router-link>
+      </template>
+
+      <!-- documents sent, waiting for approval -->
+      <template v-else-if="lockReason === 'under_review'">
+        <p class="lock-text">
+          Your foundation is waiting for verification. You can edit your foundation's settings
+          once the super administrator approves it.
+        </p>
+        <router-link class="btn-save lock-btn" to="/foundation/dashboard">Back to dashboard</router-link>
+      </template>
+
+      <!-- rejected: details are fixed through Edit & Resubmit instead -->
+      <template v-else-if="lockReason === 'rejected'">
+        <p class="lock-text">
+          Your foundation's verification was rejected. To update your details, use
+          <strong>Edit &amp; Resubmit</strong> on the dashboard. Settings unlock once your foundation is approved.
+        </p>
+        <router-link class="btn-save lock-btn" to="/foundation/dashboard">Go to Edit &amp; Resubmit</router-link>
+      </template>
     </div>
 
     <div v-else class="settings-layout">
@@ -266,6 +288,8 @@ import Spinner from "../components/foundation-admin/spinner.vue"
 const isLoading   = ref(false)
 // 'create_foundation' / 'upload_documents' while sign-up is unfinished (Settings locked), else null
 const setupStep   = ref(null)
+// Why Settings are locked: 'finish_signup' | 'under_review' | 'rejected', or null when approved
+const lockReason  = ref(null)
 const foundation  = ref(null)
 const saving      = ref(false)
 const brandSaving = ref(false)
@@ -337,15 +361,16 @@ async function loadPayments() {
 }
 
 onMounted(async () => {
-  // Settings are locked until sign-up is finished (the server refuses saves too)
+  // Settings are locked until the foundation is approved (the server refuses saves too)
   isLoading.value = true
   try {
     const res = await api.get("/foundation/dashboard")
-    setupStep.value = res.data?.setup_step ?? null
+    setupStep.value  = res.data?.setup_step ?? null
+    lockReason.value = res.data?.settings_locked ?? null
   } catch (err) {
-    console.error("Failed to check sign-up status:", err)
+    console.error("Failed to check foundation status:", err)
   }
-  if (setupStep.value) {
+  if (lockReason.value) {
     isLoading.value = false
     return
   }

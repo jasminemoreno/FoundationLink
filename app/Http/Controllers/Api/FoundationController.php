@@ -196,6 +196,8 @@ class FoundationController extends Controller
         return response()->json([
             'foundation' => $foundation,
             'setup_step' => $setupStep,
+            // Why Settings are locked (finish_signup / under_review / rejected), or null
+            'settings_locked' => $foundation ? $foundation->settingsLockReason() : 'finish_signup',
             'can_donate' => $foundation && $foundation->status === 'verified',
             'followers_count' => $foundation ? $foundation->followers()->count() : 0,
             'likes_count' => $foundation ? $foundation->likers()->count() : 0,
@@ -203,18 +205,20 @@ class FoundationController extends Controller
     }
 
     /**
-     * The signed-in admin's foundation, for actions that are locked until sign-up
-     * is finished (foundation added and documents uploaded), e.g. Settings.
+     * The signed-in admin's foundation, for Settings actions (foundation info,
+     * branding, payment accounts), which stay locked until the super admin has
+     * approved the foundation (see Foundation::settingsLockReason()).
      */
-    public static function foundationWithFinishedSignUp(): Foundation
+    public static function foundationWithEditableSettings(): Foundation
     {
         $foundation = Foundation::where('user_id', auth()->id())->first();
+        $reason = $foundation ? $foundation->settingsLockReason() : 'finish_signup';
 
-        abort_if(
-            !$foundation || !$foundation->isSignUpFinished(),
-            403,
-            'Please finish your sign-up first. Settings unlock once your foundation details and documents are submitted.'
-        );
+        abort_if($reason !== null, 403, match ($reason) {
+            'under_review' => 'Settings are locked while your foundation is waiting for approval. They unlock once the super admin approves your foundation.',
+            'rejected' => 'Settings are locked because your verification was rejected. Update your details with "Edit & Resubmit" on the dashboard.',
+            default => 'Please finish your sign-up first. Settings unlock once your foundation is approved.',
+        });
 
         return $foundation;
     }
@@ -250,7 +254,7 @@ class FoundationController extends Controller
     ══════════════════════════════ */
     public function updateSettings(Request $request)
     {
-        $foundation = $this->foundationWithFinishedSignUp();
+        $foundation = $this->foundationWithEditableSettings();
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
