@@ -76,11 +76,11 @@
 import { ref, watch, onMounted, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
-import DonateModal from '@/components/donor/DonateModal.vue'
+import DonateModal from '@/components/donor/donatemodal.vue'
 import CampaignDetailsModal from '../components/donor/ViewDetail.vue'
-import Spinner from '../components/donor/spinner.vue'
-import EmptyState from '../components/donor/emptystate.vue'
-import CampaignCard from '../components/donor/campaigncard.vue'
+import Spinner from '../components/donor/Spinner.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
+import CampaignCard from '../components/donor/Campaigncard.vue'
 
 const route  = useRoute()
 const router = useRouter()

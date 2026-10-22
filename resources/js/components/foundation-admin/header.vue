@@ -1,6 +1,14 @@
 <template>
   <header class="app-header">
-    <h1 class="header-title">{{ pageTitle }}</h1>
+    <div class="header-left">
+      <!-- Small screens only: opens the slide-in menu -->
+      <button type="button" class="menu-btn" aria-label="Open menu" :aria-expanded="sidebarOpen" @click="openSidebar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+      <h1 class="header-title">{{ pageTitle }}</h1>
+    </div>
 
     <div class="header-right">
       <div class="org-info">
@@ -78,34 +86,22 @@
           </router-link>
 
           <router-link to="/foundation/help" class="menu-item" @click="menuOpen = false">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             Help Center
           </router-link>
 
           <router-link to="/foundation/terms" class="menu-item" @click="menuOpen = false">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-            Terms of Services
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Terms of Service
           </router-link>
 
           <router-link to="/foundation/privacy" class="menu-item" @click="menuOpen = false">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-            Privacy and Policy
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Privacy Policy
           </router-link>
 
           <router-link to="/foundation/contact" class="menu-item" @click="menuOpen = false">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
             Contact Us
           </router-link>
 
@@ -128,7 +124,9 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
 import { useFoundation } from '../../composable/usefoundation'
+import { useFoundationSidebar } from '../../composable/useFoundationSidebar'
 
+const { sidebarOpen, openSidebar } = useFoundationSidebar()
 const router = useRouter()
 const route = useRoute()
 
@@ -150,8 +148,24 @@ const user = ref(null)
 /* ══════════════════════════════
    PAGE TITLE
 ══════════════════════════════ */
+// Titles match the sidebar labels (route names are singular, e.g. foundation-campaign)
+const PAGE_TITLES = {
+  'foundation-dashboard': 'Dashboard',
+  'foundation-campaign':  'Campaigns',
+  'foundation-donation':  'Donations',
+  'foundation-donor':     'Donors',
+  'foundation-report':    'Reports',
+  'foundation-setting':   'Settings',
+  'foundation-profile':   'My Profile',
+  'foundation-help':      'Help Center',
+  'foundation-terms':     'Terms of Service',
+  'foundation-privacy':   'Privacy Policy',
+  'foundation-contact':   'Contact Us',
+}
+
 const pageTitle = computed(() => {
   if (route.meta?.title) return route.meta.title
+  if (PAGE_TITLES[route.name]) return PAGE_TITLES[route.name]
   const name = route.name?.toString() || 'Dashboard'
   const last = name.split('-').pop()
   return last.charAt(0).toUpperCase() + last.slice(1)
@@ -327,7 +341,7 @@ onBeforeUnmount(() => {
 .header-title {
   font-size: 22px;
   font-weight: 800;
-  color: #1a56c4;
+  color: var(--fa-primary);
   font-family: 'Segoe UI', sans-serif;
   margin: 0;
   letter-spacing: 0.3px;
@@ -345,12 +359,12 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: #f4f7ff;
+  background: var(--fa-primary-tint);
 }
 .org-name {
   font-size: 13px;
   font-weight: 600;
-  color: #2f3b52;
+  color: var(--fa-text);
 }
 
 /* NOTIFICATIONS */
@@ -359,13 +373,13 @@ onBeforeUnmount(() => {
 .notif-btn {
   width: 42px; height: 42px;
   border-radius: 50%;
-  border: none; background: #f4f7ff;
+  border: none; background: var(--fa-primary-tint);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; position: relative;
-  color: #1a56c4;
+  color: var(--fa-primary);
   transition: background 0.2s;
 }
-.notif-btn:hover { background: #e9efff; }
+.notif-btn:hover { background: var(--fa-primary-soft); }
 
 .notif-badge {
   position: absolute; top: -2px; right: -2px;
@@ -379,24 +393,24 @@ onBeforeUnmount(() => {
 .notif-menu {
   position: absolute; top: calc(100% + 10px); right: 0;
   width: 320px; max-height: 400px;
-  background: white; border: 1px solid #e2e8f0; border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(15,45,82,0.15);
+  background: white; border: 1px solid var(--fa-border); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(30,58,138,0.15);
   z-index: 60; overflow: hidden; display: flex; flex-direction: column;
 }
 
 .notif-menu-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid #f1f5f9;
-  font-size: 0.85rem; font-weight: 700; color: #0F2D52;
+  font-size: 0.85rem; font-weight: 700; color: var(--fa-heading);
 }
 
 .mark-all-btn {
-  border: none; background: none; color: #1a56c4;
+  border: none; background: none; color: var(--fa-primary);
   font-size: 0.75rem; font-weight: 600; cursor: pointer;
 }
 
 .notif-empty {
-  padding: 24px 14px; text-align: center; font-size: 0.82rem; color: #94a3b8;
+  padding: 24px 14px; text-align: center; font-size: 0.82rem; color: var(--fa-muted);
 }
 
 .notif-list { overflow-y: auto; }
@@ -406,23 +420,23 @@ onBeforeUnmount(() => {
   transition: background 0.15s;
 }
 .notif-item:hover { background: #f8fafc; }
-.notif-item.unread { background: #f4f7ff; }
-.notif-item.unread:hover { background: #e9efff; }
+.notif-item.unread { background: var(--fa-primary-tint); }
+.notif-item.unread:hover { background: var(--fa-primary-soft); }
 
 .notif-item-row {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
 
-.notif-title { font-size: 0.83rem; font-weight: 700; color: #0F2D52; }
+.notif-title { font-size: 0.83rem; font-weight: 700; color: var(--fa-heading); }
 
 .notif-delete {
-  border: none; background: none; color: #94a3b8; cursor: pointer;
+  border: none; background: none; color: var(--fa-muted); cursor: pointer;
   padding: 2px; flex-shrink: 0; border-radius: 4px; transition: color 0.15s, background 0.15s;
 }
-.notif-delete:hover { color: #dc2626; background: #fef2f2; }
+.notif-delete:hover { color: var(--fa-danger); background: #fef2f2; }
 
-.notif-message { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
-.notif-time { font-size: 0.7rem; color: #94a3b8; margin-top: 4px; }
+.notif-message { font-size: 0.78rem; color: var(--fa-muted); margin-top: 2px; }
+.notif-time { font-size: 0.7rem; color: var(--fa-muted); margin-top: 4px; }
 
 /* AVATAR */
 .avatar-wrap { position: relative; }
@@ -441,14 +455,14 @@ onBeforeUnmount(() => {
 .avatar-initials-sm {
   width: 100%; height: 100%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #1a56c4, #133c8a);
+  background: linear-gradient(135deg, var(--fa-primary), var(--fa-primary-hover));
   color: white; font-size: 0.8rem; font-weight: 800;
 }
 
 .avatar-menu {
   position: absolute; top: calc(100% + 10px); right: 0; width: 240px;
-  background: white; border: 1px solid #e2e8f0; border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(15,45,82,0.15);
+  background: white; border: 1px solid var(--fa-border); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(30,58,138,0.15);
   padding: 8px; z-index: 60;
 }
 
@@ -463,19 +477,42 @@ onBeforeUnmount(() => {
 }
 .menu-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.menu-name  { font-size: 0.85rem; font-weight: 700; color: #0F2D52; }
-.menu-email { font-size: 0.73rem; color: #94a3b8; }
+.menu-name  { font-size: 0.85rem; font-weight: 700; color: var(--fa-heading); }
+.menu-email { font-size: 0.73rem; color: var(--fa-muted); }
 
 .menu-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
 
 .menu-item {
   display: flex; align-items: center; gap: 10px;
   width: 100%; padding: 9px 10px; border: none; background: none;
-  border-radius: 8px; font-size: 0.83rem; font-weight: 500; color: #334155;
+  border-radius: 8px; font-size: 0.83rem; font-weight: 500; color: var(--fa-text);
   text-decoration: none; cursor: pointer; text-align: left;
   transition: background 0.15s;
 }
-.menu-item:hover { background: #f4f7ff; color: #0F2D52; }
-.menu-item.danger { color: #dc2626; }
+.menu-item:hover { background: var(--fa-primary-tint); color: var(--fa-heading); }
+.menu-item.danger { color: var(--fa-danger); }
 .menu-item.danger:hover { background: #fef2f2; }
+
+/* MENU BUTTON (small screens) */
+.header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.menu-btn { display: none; }
+
+@media (max-width: 1023px) {
+  .app-header { padding: 0 16px; height: 62px; }
+  .menu-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex-shrink: 0;
+    border: 1px solid var(--fa-border); border-radius: 10px;
+    background: var(--fa-surface); color: var(--fa-primary); cursor: pointer;
+  }
+  .menu-btn:focus-visible { outline: 2px solid var(--fa-primary); outline-offset: 2px; }
+  .header-title { font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* dropdowns never wider than the screen */
+  .notif-menu { width: min(320px, calc(100vw - 32px)); }
+}
+
+@media (max-width: 600px) {
+  .org-info { display: none; } /* the foundation name is already in the menu */
+  .header-right { gap: 10px; }
+}
 </style>

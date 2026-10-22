@@ -161,13 +161,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '@/services/api'
-import DonateModal from '@/components/donor/DonateModal.vue'
+import DonateModal from '@/components/donor/donatemodal.vue'
 import CampaignDetailsModal from '../components/donor/ViewDetail.vue'
-import Spinner from '../components/donor/spinner.vue'
-import EmptyState from '../components/donor/emptystate.vue'
-import FoundationBubble from '../components/donor/foundationbubble.vue'
-import StatCard from '../components/donor/statcard.vue'
-import CampaignCard from '../components/donor/campaigncard.vue'
+import Spinner from '../components/donor/Spinner.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
+import FoundationBubble from '../components/donor/Foundationbubble.vue'
+import StatCard from '../components/donor/Statcard.vue'
+import CampaignCard from '../components/donor/Campaigncard.vue'
 import { formatMoney, formatDate } from '../composable/donor.js'
 
 const isLoading          = ref(false)

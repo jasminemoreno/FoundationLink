@@ -43,7 +43,7 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    color: #777;
+    color: var(--fa-muted);
     white-space: nowrap;
   }
   
@@ -61,7 +61,7 @@
   }
   
   .circle.active {
-    background: #0d47a1;
+    background: var(--fa-primary-hover);
     color: white;
   }
   

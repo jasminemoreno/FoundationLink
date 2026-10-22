@@ -20,11 +20,8 @@ class SuperAdminController extends Controller
         /* ── STATS ── */
         $totalFoundations = Foundation::count();
 
-        $pendingFoundations = Foundation::whereIn('status', [
-            'pending_verification',
-            'under_review',
-            'incomplete'
-        ])->count();
+        // Waiting for approval = documents sent; unfinished sign-ups aren't in the queue
+        $pendingFoundations = Foundation::where('status', 'under_review')->count();
 
         $totalDonors = User::where('role', 'donor')->count();
 
@@ -201,11 +198,7 @@ class SuperAdminController extends Controller
                     'color' => 'green',
                 ],
             ],
-            'pendingApprovals' => Foundation::whereIn('status', [
-                'pending_verification',
-                'under_review',
-                'incomplete'
-            ])
+            'pendingApprovals' => Foundation::where('status', 'under_review') // documents sent; unfinished sign-ups aren't waiting for approval
                 ->latest()
                 ->take(5)
                 ->get()
@@ -236,14 +229,18 @@ class SuperAdminController extends Controller
             'rejection_reason' => null
         ]);
 
-        // send email
-        Mail::raw(
-            "Congratulations! Your foundation has been approved and you may now access FoundationLink.",
-            function ($message) use ($foundation) {
-                $message->to($foundation->user->email)
-                    ->subject('Foundation Approved');
-            }
-        );
+        // The approval is already saved, so a mail failure must not turn this into an error.
+        try {
+            Mail::raw(
+                "Congratulations! Your foundation has been approved and you may now access FoundationLink.",
+                function ($message) use ($foundation) {
+                    $message->to($foundation->user->email)
+                        ->subject('Foundation Approved');
+                }
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return response()->json([
             'success' => true,
@@ -253,20 +250,31 @@ class SuperAdminController extends Controller
 
     public function rejectFoundation(Request $request, $id)
     {
+        // The reason is shown to the foundation and emailed to them, so it can't be blank.
+        $validated = $request->validate([
+            'reason' => 'required|string|min:5|max:1000',
+        ], [
+            'reason.required' => 'Please enter a reason for the rejection.',
+        ]);
+
         $foundation = Foundation::with('user')->findOrFail($id);
 
         $foundation->update([
             'status' => 'rejected',
-            'rejection_reason' => $request->reason
+            'rejection_reason' => $validated['reason']
         ]);
 
-        Mail::raw(
-            "Your foundation verification was rejected.\n\nReason: " . $request->reason,
-            function ($message) use ($foundation) {
-                $message->to($foundation->user->email)
-                    ->subject('Foundation Verification Rejected');
-            }
-        );
+        try {
+            Mail::raw(
+                "Your foundation verification was rejected.\n\nReason: " . $validated['reason'],
+                function ($message) use ($foundation) {
+                    $message->to($foundation->user->email)
+                        ->subject('Foundation Verification Rejected');
+                }
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return response()->json([
             'success' => true,
@@ -311,11 +319,8 @@ class SuperAdminController extends Controller
     }
     public function pendingApprovalsCount()
     {
-        $count = Foundation::whereIn('status', [
-            'pending_verification',
-            'under_review',
-            'incomplete'
-        ])->count();
+        // Waiting for approval = documents sent; unfinished sign-ups aren't in the queue
+        $count = Foundation::where('status', 'under_review')->count();
 
         return response()->json(['count' => $count]);
     }

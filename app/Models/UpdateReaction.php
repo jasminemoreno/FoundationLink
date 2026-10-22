@@ -10,7 +10,8 @@ class UpdateReaction extends Model
 
     public function donor()
     {
-        return $this->belongsTo(User::class, 'donor_id');
+        // withTrashed: reactions from soft-deleted donors still list without crashing
+        return $this->belongsTo(User::class, 'donor_id')->withTrashed();
     }
 
     public function campaignUpdate()

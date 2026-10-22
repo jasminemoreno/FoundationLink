@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use App\Mail\FoundationVerificationSubmitted;
 use App\Mail\FoundationEmailChangeVerification;
 use App\Mail\FoundationEmailChangeNotice;
+use App\Support\Phone;
 
 class FoundationController extends Controller
 {
@@ -21,8 +22,9 @@ class FoundationController extends Controller
      */
     public function store(Request $request)
     {
+        // Owner is always the signed-in foundation admin (registration token),
+        // never an id taken from the request body.
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
             'category_id' => 'nullable|exists:categories,id',
 
             'name' => 'required|string|max:255',
@@ -37,8 +39,7 @@ class FoundationController extends Controller
             'cover_photo' => 'nullable|string',
         ]);
 
-        $foundation = Foundation::create([
-            'user_id' => $validated['user_id'],
+        $details = [
             'category_id' => $validated['category_id'] ?? null,
 
             'name' => $validated['name'],
@@ -51,7 +52,29 @@ class FoundationController extends Controller
 
             'logo' => $validated['logo'] ?? null,
             'cover_photo' => $validated['cover_photo'] ?? null,
+        ];
 
+        // One foundation per admin. If they pressed Back during sign-up and
+        // submitted this step again, update the draft instead of making a duplicate.
+        $existing = Foundation::where('user_id', auth()->id())->first();
+
+        if ($existing) {
+            if (!in_array($existing->status, ['pending_verification', 'incomplete'], true)) {
+                return response()->json([
+                    'message' => 'You already have a foundation registered.'
+                ], 422);
+            }
+
+            $existing->update($details);
+
+            return response()->json([
+                'message' => 'Foundation updated successfully',
+                'foundation' => $existing
+            ]);
+        }
+
+        $foundation = Foundation::create($details + [
+            'user_id' => auth()->id(),
             'status' => 'pending_verification',
         ]);
 
@@ -162,12 +185,38 @@ class FoundationController extends Controller
             ->where('user_id', auth()->id())
             ->first();
 
+        // What an admin who stopped half-way through sign-up still has to do,
+        // so the dashboard can send them back to the right page.
+        $setupStep = match (true) {
+            !$foundation => 'create_foundation',
+            !$foundation->isSignUpFinished() => 'upload_documents',
+            default => null,
+        };
+
         return response()->json([
             'foundation' => $foundation,
+            'setup_step' => $setupStep,
             'can_donate' => $foundation && $foundation->status === 'verified',
             'followers_count' => $foundation ? $foundation->followers()->count() : 0,
             'likes_count' => $foundation ? $foundation->likers()->count() : 0,
         ]);
+    }
+
+    /**
+     * The signed-in admin's foundation, for actions that are locked until sign-up
+     * is finished (foundation added and documents uploaded), e.g. Settings.
+     */
+    public static function foundationWithFinishedSignUp(): Foundation
+    {
+        $foundation = Foundation::where('user_id', auth()->id())->first();
+
+        abort_if(
+            !$foundation || !$foundation->isSignUpFinished(),
+            403,
+            'Please finish your sign-up first. Settings unlock once your foundation details and documents are submitted.'
+        );
+
+        return $foundation;
     }
 
     public function suspend($id)
@@ -201,7 +250,7 @@ class FoundationController extends Controller
     ══════════════════════════════ */
     public function updateSettings(Request $request)
     {
-        $foundation = Foundation::where('user_id', auth()->id())->firstOrFail();
+        $foundation = $this->foundationWithFinishedSignUp();
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
@@ -312,9 +361,14 @@ class FoundationController extends Controller
 
         $superAdmin = User::where('role', 'superadmin')->first();
 
+        // Resubmission is already saved, so a mail failure must not turn this into an error.
         if ($superAdmin && $superAdmin->email) {
-            Mail::to($superAdmin->email)
-                ->send(new FoundationVerificationSubmitted($foundation));
+            try {
+                Mail::to($superAdmin->email)
+                    ->send(new FoundationVerificationSubmitted($foundation));
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         Notification::notifySuperadmins(
@@ -535,10 +589,12 @@ class FoundationController extends Controller
     {
         $user = auth()->user();
 
+        Phone::normalizeRequest($request);
+
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => Phone::profileRule($user),
             'address' => 'nullable|string',
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'birthdate' => 'nullable|date',
@@ -550,7 +606,7 @@ class FoundationController extends Controller
                 'min:12',
                 'regex:/^(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/',
             ],
-        ], [
+        ], Phone::MESSAGES + [
             'new_password.min' => 'New password must be at least 12 characters.',
             'new_password.regex' => 'New password must include at least one number and one special character.',
         ]);

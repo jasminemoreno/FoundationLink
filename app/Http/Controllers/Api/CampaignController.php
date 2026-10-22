@@ -18,6 +18,24 @@ class CampaignController extends Controller
         return Foundation::where('user_id', auth()->id())->firstOrFail();
     }
 
+    /**
+     * For actions that change a campaign. Only approved foundations may do
+     * them, so a suspended foundation's campaigns stay frozen even if someone
+     * calls the API directly (the screens already hide these buttons).
+     */
+    private function getVerifiedFoundation()
+    {
+        $foundation = $this->getFoundation();
+
+        abort_if(
+            $foundation->status !== 'verified',
+            403,
+            'Your foundation must be verified by the super admin to manage campaigns.'
+        );
+
+        return $foundation;
+    }
+
     /* ══════════════════════════════
        LIST
     ══════════════════════════════ */
@@ -25,7 +43,7 @@ class CampaignController extends Controller
     {
         $foundation = $this->getFoundation();
 
-        $campaigns = Campaign::with(['photos', 'category'])
+        $campaigns = Campaign::with(['photos', 'category', 'activePromotion'])
             ->where('foundation_id', $foundation->id)
             ->latest()
             ->get();
@@ -119,7 +137,7 @@ class CampaignController extends Controller
     ══════════════════════════════ */
     public function update(Request $request, $id)
     {
-        $foundation = $this->getFoundation();
+        $foundation = $this->getVerifiedFoundation();
         $campaign = Campaign::where('id', $id)
             ->where('foundation_id', $foundation->id)
             ->firstOrFail();
@@ -132,7 +150,8 @@ class CampaignController extends Controller
             'goal_amount' => 'nullable|numeric|min:0',
             'start_date' => 'sometimes|nullable|date',
             'end_date' => 'sometimes|nullable|date',
-            'status' => 'sometimes|in:draft,active,completed,cancelled,paused',
+            // No 'status' here: status only changes via pause / resume / complete,
+            // which enforce the allowed transitions.
             'cover_photo' => 'sometimes|nullable|image|max:4096',
             'photos.*' => 'sometimes|nullable|image|max:4096',
             'captions.*' => 'sometimes|nullable|string|max:255',
@@ -198,7 +217,7 @@ class CampaignController extends Controller
     {
         $request->validate(['pause_reason' => 'required|string|max:500']);
 
-        $foundation = $this->getFoundation();
+        $foundation = $this->getVerifiedFoundation();
         $campaign = Campaign::where('id', $id)->where('foundation_id', $foundation->id)->firstOrFail();
 
         if ($campaign->status !== 'active') {
@@ -214,7 +233,7 @@ class CampaignController extends Controller
     ══════════════════════════════ */
     public function resume($id)
     {
-        $foundation = $this->getFoundation();
+        $foundation = $this->getVerifiedFoundation();
         $campaign = Campaign::where('id', $id)->where('foundation_id', $foundation->id)->firstOrFail();
 
         if ($campaign->status !== 'paused') {
@@ -230,7 +249,7 @@ class CampaignController extends Controller
     ══════════════════════════════ */
     public function complete($id)
     {
-        $foundation = $this->getFoundation();
+        $foundation = $this->getVerifiedFoundation();
         $campaign = Campaign::where('id', $id)->where('foundation_id', $foundation->id)->firstOrFail();
 
         if (!in_array($campaign->status, ['active', 'paused'])) {
@@ -246,7 +265,7 @@ class CampaignController extends Controller
     ══════════════════════════════ */
     public function destroy($id)
     {
-        $foundation = $this->getFoundation();
+        $foundation = $this->getVerifiedFoundation();
         $campaign = Campaign::where('id', $id)->where('foundation_id', $foundation->id)->firstOrFail();
 
         foreach ($campaign->photos as $p) {

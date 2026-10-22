@@ -44,12 +44,12 @@
 </script>
 
 <style scoped>
-.page { background: #f0f4f9; min-height: 100%; padding-bottom: 40px; box-sizing: border-box; }
+.page { background: var(--fa-primary-tint); min-height: 100%; padding-bottom: 40px; box-sizing: border-box; }
 .container { max-width: 720px; margin: 0 auto; padding: 32px 24px; }
 
 .page-head { margin-bottom: 24px; text-align: center; }
-.page-head h1 { font-size: 1.45rem; font-weight: 800; color: #133c8a; margin: 0 0 6px; }
-.page-head p  { font-size: 0.85rem; color: #64748b; margin: 0; }
+.page-head h1 { font-size: 1.45rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 6px; }
+.page-head p  { font-size: 0.85rem; color: var(--fa-muted); margin: 0; }
 
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 
@@ -58,21 +58,21 @@
   border-radius: 16px;
   padding: 26px 22px;
   text-align: center;
-  box-shadow: 0 1px 4px rgba(15,45,82,0.06);
+  box-shadow: 0 1px 4px rgba(30,58,138,0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-.contact-card.main { border: 2px solid #1a56c4; }
+.contact-card.main { border: 2px solid var(--fa-primary); }
 
 .contact-icon { font-size: 2rem; margin-bottom: 10px; }
-.contact-card h3 { font-size: 0.95rem; font-weight: 800; color: #133c8a; margin: 0 0 8px; }
-.contact-card p  { font-size: 0.8rem; color: #64748b; line-height: 1.6; margin: 0 0 16px; }
+.contact-card h3 { font-size: 0.95rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 8px; }
+.contact-card p  { font-size: 0.8rem; color: var(--fa-muted); line-height: 1.6; margin: 0 0 16px; }
 
 .btn-contact {
   display: inline-block;
   padding: 10px 20px;
-  background: #1a56c4;
+  background: var(--fa-primary);
   color: white;
   border-radius: 10px;
   font-size: 0.83rem;
@@ -81,14 +81,14 @@
   transition: background 0.2s;
   word-break: break-all;
 }
-.btn-contact:hover { background: #133c8a; }
+.btn-contact:hover { background: var(--fa-primary-hover); }
 
 .btn-contact-secondary {
   display: inline-block;
   padding: 10px 20px;
   background: white;
-  color: #1a56c4;
-  border: 1.5px solid #1a56c4;
+  color: var(--fa-primary);
+  border: 1.5px solid var(--fa-primary);
   border-radius: 10px;
   font-size: 0.83rem;
   font-weight: 700;
@@ -106,7 +106,7 @@
   border-radius: 10px;
   padding: 12px 14px;
   font-size: 0.8rem;
-  color: #92400e;
+  color: var(--fa-warning);
   line-height: 1.6;
 }
 .notice svg { flex-shrink: 0; margin-top: 1px; }

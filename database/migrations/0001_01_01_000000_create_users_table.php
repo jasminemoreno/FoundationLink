@@ -35,9 +35,9 @@ return new class extends Migration {
                 'inactive',
                 'suspended'
             ])->default('active');
-
+            $table->text('suspension_reason')->nullable();
             $table->timestamp('email_verified_at')->nullable();
-            $table->rememberToken();
+
             $table->timestamps();
             $table->softDeletes();
         });

@@ -157,8 +157,8 @@ const router = useRouter()
 // swaps this history entry so a second Back press doesn't bounce them
 // between the two pages in a loop.
 onMounted(() => {
-  const existingAdminId = sessionStorage.getItem("foundation_admin_id")
-  if (existingAdminId) {
+  const registrationToken = sessionStorage.getItem("registration_token")
+  if (registrationToken) {
     router.replace("/foundation/create")
   }
 })
@@ -268,11 +268,15 @@ async function goNext() {
       response.data?.data?.id ||
       response.data?.id
 
-    if (!userId) {
-      throw new Error("User ID not returned from backend")
+    const registrationToken = response.data?.registration_token
+
+    if (!userId || !registrationToken) {
+      throw new Error("User ID or registration token not returned from backend")
     }
 
     sessionStorage.setItem("foundation_admin_id", userId)
+    // Proves who we are on the next two sign-up steps (create foundation, upload documents)
+    sessionStorage.setItem("registration_token", registrationToken)
 
     router.push("/foundation/create")
 
@@ -293,13 +297,13 @@ async function goNext() {
   text-align: center;
   font-size: 1.4rem;
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--fa-text);
 }
 
 .form-subtitle {
   text-align: center;
   font-size: 0.85rem;
-  color: #777;
+  color: var(--fa-muted);
   margin-bottom: 1.5rem;
 }
 
@@ -323,7 +327,7 @@ label {
 }
 
 .field-input:focus {
-  border-color: #1565c0;
+  border-color: var(--fa-primary);
 }
 
 .password-wrap {
@@ -356,7 +360,7 @@ label {
   background: none;
   border: none;
   cursor: pointer;
-  color: #94a3b8;
+  color: var(--fa-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -365,12 +369,12 @@ label {
 }
 
 .eye-btn:hover {
-  color: #1565c0;
+  color: var(--fa-primary);
 }
 
 .field-error {
   font-size: 0.78rem;
-  color: #dc2626;
+  color: var(--fa-danger);
   margin: 5px 0 0;
 }
 
@@ -392,12 +396,12 @@ label {
   align-items: center;
   gap: 6px;
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--fa-muted);
   transition: color 0.15s;
 }
 
 .password-checklist li.met {
-  color: #059669;
+  color: var(--fa-success);
 }
 
 .check-icon {
@@ -411,7 +415,7 @@ label {
   width: 100%;
   padding: 14px;
   margin-top: 10px;
-  background: #0d47a1;
+  background: var(--fa-primary-hover);
   color: white;
   border: none;
   border-radius: 10px;
@@ -420,7 +424,7 @@ label {
 }
 
 .next-btn:hover {
-  background: #1565c0;
+  background: var(--fa-primary);
 }
 
 .login-redirect {
@@ -430,7 +434,7 @@ label {
 }
 
 .login-redirect a {
-  color: #0d47a1;
+  color: var(--fa-primary-hover);
   font-weight: bold;
 }
 </style>

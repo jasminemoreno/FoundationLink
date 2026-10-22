@@ -3,6 +3,9 @@
 
     <Sidebar />
 
+    <!-- Small screens: dark backdrop behind the slide-in menu; tap it to close -->
+    <div v-if="sidebarOpen" class="sidebar-backdrop" @click="closeSidebar" aria-hidden="true"></div>
+
     <div class="main">
 
       <Header />
@@ -19,14 +22,21 @@
 </template>
 
 <script setup>
+import '@/assets/foundation-theme.css'
 import Sidebar from '@/components/foundation-admin/sidebar.vue'
 import Header from '@/components/foundation-admin/header.vue'
 import Footer from '@/components/foundation-admin/footer.vue'
 
-import { useRouter } from 'vue-router'
-import { onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { onMounted, watch } from 'vue'
+import { useFoundationSidebar } from '@/composable/useFoundationSidebar'
 
 const router = useRouter()
+const route = useRoute()
+const { sidebarOpen, closeSidebar } = useFoundationSidebar()
+
+// Going to another page closes the slide-in menu on small screens
+watch(() => route.fullPath, closeSidebar)
 
 onMounted(() => {
 
@@ -44,7 +54,8 @@ onMounted(() => {
 .layout {
   display: flex;
   min-height: 100vh;
-  background: #f0f4f9;
+  background: var(--fa-bg);
+  color: var(--fa-text);
 }
 
 /* Sidebar is now position: fixed with width 290px,
@@ -62,5 +73,23 @@ onMounted(() => {
 .content {
   flex: 1;
   padding: 24px;
+  min-width: 0;
+}
+
+.sidebar-backdrop { display: none; }
+
+/* Phones / small tablets: the sidebar becomes a slide-in menu (see sidebar.vue),
+   so the page uses the full width. */
+@media (max-width: 1023px) {
+  .main { margin-left: 0; }
+  .content { padding: 16px; }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+  }
 }
 </style>

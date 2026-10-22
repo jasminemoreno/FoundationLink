@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CampaignController;
+use App\Http\Controllers\Api\CampaignPromotionController;
 use App\Http\Controllers\Api\CampaignUpdateController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DonationController;
@@ -24,15 +25,13 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-attempts');
 Route::post('/register/donor', [AuthController::class, 'registerDonor']);
 Route::post('/foundation-admin/register', [AuthController::class, 'registerFoundation']);
-Route::post('/foundations', [FoundationController::class, 'store']);
-Route::post('/foundation-verification', [FoundationVerificationController::class, 'store']);
 Route::get('/categories', [CategoryController::class, 'index']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-attempts');
+Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:auth-attempts');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-attempts');
 
 // Email-change confirmation — public because the user may click this link
 // from a different browser/session than the one that requested the change.
@@ -55,6 +54,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Foundation sign-up steps 2 (create foundation) and 3 (upload documents).
+    // The caller is identified by the short-lived token issued at registration,
+    // never by a user_id / foundation_id sent in the request body.
+    Route::middleware('role:foundation_admin')->group(function () {
+        Route::post('/foundations', [FoundationController::class, 'store']);
+        Route::post('/foundation-verification', [FoundationVerificationController::class, 'store']);
+    });
+
     /*
     |--------------------------------------------------------------------------
     | SUPER ADMIN
@@ -68,10 +75,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/foundations/{id}/unsuspend', [FoundationController::class, 'unsuspend']);
         Route::post('/foundations/{id}/approve', [SuperAdminController::class, 'approveFoundation']);
         Route::post('/foundations/{id}/reject', [SuperAdminController::class, 'rejectFoundation']);
-        Route::get('/admin/foundations/pending-count', [SuperAdminController::class, 'pendingApprovalsCount']);
+        Route::get('/foundations/pending-count', [SuperAdminController::class, 'pendingApprovalsCount']);
         Route::get('/campaigns', [SuperAdminController::class, 'campaigns']);
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::post('/categories', [CategoryController::class, 'store']);
+        // Before /categories/{id}, so "suggest-icon" isn't read as an id
+        Route::get('/categories/suggest-icon', [CategoryController::class, 'suggestIcon']);
         Route::get('/categories/{id}', [CategoryController::class, 'show']);
         Route::put('/categories/{id}', [CategoryController::class, 'update']);
         Route::patch('/categories/{id}', [CategoryController::class, 'update']);
@@ -121,6 +130,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/campaigns/{id}/pause', [CampaignController::class, 'pause']);
         Route::patch('/campaigns/{id}/resume', [CampaignController::class, 'resume']);
         Route::patch('/campaigns/{id}/complete', [CampaignController::class, 'complete']);
+        Route::get('/campaigns/{id}/promotion-suggestions', [CampaignPromotionController::class, 'suggestions']);
+        Route::post('/campaigns/{id}/promote', [CampaignPromotionController::class, 'promote']);
+        Route::get('/campaigns/{id}/timeline', [CampaignPromotionController::class, 'timeline']);
         Route::get('/campaigns/{id}/updates', [CampaignUpdateController::class, 'index']);
         Route::post('/campaigns/{id}/updates', [CampaignUpdateController::class, 'store']);
         Route::post('/campaigns/{id}/updates/{updateId}', [CampaignUpdateController::class, 'update']);
@@ -162,7 +174,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/foundations/{id}', [DonorController::class, 'foundationDetail']);
         Route::get('/campaigns', [DonorController::class, 'campaigns']);
         Route::get('/campaigns/{id}', [DonorController::class, 'campaignDetail']);
-        Route::get('/donor/categories', [DonorController::class, 'categories']);
+        Route::get('/categories', [DonorController::class, 'categories']);
         Route::get('/campaigns/{id}/updates', [CampaignUpdateController::class, 'donorIndex']);
         Route::post('/donate', [DonorController::class, 'donate']);
         Route::get('/donations', [DonorController::class, 'myDonations']);

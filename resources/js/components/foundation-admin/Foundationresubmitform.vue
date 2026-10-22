@@ -248,13 +248,13 @@
   .resubmit-title {
     font-size: 1rem;
     font-weight: 800;
-    color: #0F2D52;
+    color: var(--fa-heading);
     margin-bottom: 4px;
   }
   
   .resubmit-sub {
     font-size: 0.82rem;
-    color: #777;
+    color: var(--fa-muted);
     margin-bottom: 18px;
   }
   
@@ -265,7 +265,7 @@
     font-weight: 600;
     display: block;
     margin-bottom: 5px;
-    color: #1a1a2e;
+    color: var(--fa-text);
   }
   
   .field-input {
@@ -281,7 +281,7 @@
   }
   
   .field-input:focus {
-    border-color: #1565c0;
+    border-color: var(--fa-primary);
     box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
   }
   
@@ -292,22 +292,22 @@
     justify-content: space-between;
     align-items: center;
     background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--fa-border);
     border-radius: 10px;
     padding: 12px 16px;
     font-size: 0.85rem;
     font-weight: 700;
-    color: #0F2D52;
+    color: var(--fa-heading);
     cursor: pointer;
     margin-top: 6px;
     user-select: none;
   }
   .doc-toggle:hover { background: #f1f5f9; }
-  .chevron { font-size: 0.7rem; color: #94a3b8; }
+  .chevron { font-size: 0.7rem; color: var(--fa-muted); }
   
   .doc-hint {
     font-size: 0.76rem;
-    color: #94a3b8;
+    color: var(--fa-muted);
     margin: 6px 2px 14px;
     line-height: 1.5;
   }
@@ -331,7 +331,7 @@
   .error-text {
     font-size: 0.82rem;
     font-weight: 600;
-    color: #cc3333;
+    color: var(--fa-danger);
     background: #fff5f5;
     border: 1px solid #ffd0d0;
     border-radius: 8px;
@@ -349,18 +349,18 @@
     flex: 1;
     padding: 12px;
     background: #f1f5f9;
-    color: #475569;
+    color: var(--fa-text-2);
     border: none;
     border-radius: 10px;
     font-weight: 700;
     cursor: pointer;
   }
-  .cancel-btn:hover { background: #e2e8f0; }
+  .cancel-btn:hover { background: var(--fa-border); }
   
   .submit-btn {
     flex: 2;
     padding: 12px;
-    background: #0d47a1;
+    background: var(--fa-primary-hover);
     color: white;
     border: none;
     border-radius: 10px;
@@ -372,7 +372,7 @@
     justify-content: center;
     transition: background 0.2s;
   }
-  .submit-btn:hover:not(:disabled) { background: #1565c0; }
+  .submit-btn:hover:not(:disabled) { background: var(--fa-primary); }
   .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
   
   .spinner {

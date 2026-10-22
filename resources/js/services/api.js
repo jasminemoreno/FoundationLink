@@ -23,4 +23,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// The server revoked our token (e.g. the account was suspended): drop the stale
+// session and go to login, where the next attempt shows the suspension popup.
+// Only for the logged-in session token; sign-up requests use their own token.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && sessionStorage.getItem("token")) {
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

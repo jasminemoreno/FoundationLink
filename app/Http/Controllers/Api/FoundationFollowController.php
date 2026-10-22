@@ -190,7 +190,10 @@ class FoundationFollowController extends Controller
             $campaignIds = $campaignIdsFromFollowed->merge($campaignIdsFromDonations)->unique();
         }
 
+        // Only updates whose campaign still exists and whose foundation is verified;
+        // donated-to campaign ids can include deleted campaigns.
         $updates = CampaignUpdate::whereIn('campaign_id', $campaignIds)
+            ->whereHas('campaign.foundation', fn($q) => $q->where('status', 'verified'))
             ->with([
                 'campaign:id,title,foundation_id,cover_photo',
                 'campaign.foundation:id,name,logo',

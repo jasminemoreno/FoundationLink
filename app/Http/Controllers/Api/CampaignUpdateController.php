@@ -37,7 +37,7 @@ class CampaignUpdateController extends Controller
     public function store(Request $request, $campaignId)
     {
         $campaign = Campaign::where('id', $campaignId)
-            ->where('foundation_id', $this->getFoundationId())
+            ->where('foundation_id', $this->getVerifiedFoundationId())
             ->firstOrFail();
 
         if ($campaign->status !== 'completed') {
@@ -81,7 +81,7 @@ class CampaignUpdateController extends Controller
     public function update(Request $request, $campaignId, $updateId)
     {
         $campaign = Campaign::where('id', $campaignId)
-            ->where('foundation_id', $this->getFoundationId())
+            ->where('foundation_id', $this->getVerifiedFoundationId())
             ->firstOrFail();
 
         $update = CampaignUpdate::where('id', $updateId)
@@ -93,11 +93,21 @@ class CampaignUpdateController extends Controller
             'content' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*' => 'image|max:4096',
+            'existing_photos_sent' => 'nullable|boolean',
             'existing_photos' => 'nullable|array',
             'existing_photos.*' => 'string',
         ]);
 
-        $photoPaths = $validated['existing_photos'] ?? ($update->photos ?? []);
+        // A form can't send an empty array, so the edit form also sends
+        // existing_photos_sent=1: then a missing list means "all removed".
+        // Without the flag (older clients) a missing list keeps the photos.
+        $currentPhotos = $update->photos ?? [];
+        $keptPhotos = $request->boolean('existing_photos_sent') || $request->has('existing_photos')
+            ? ($validated['existing_photos'] ?? [])
+            : $currentPhotos;
+
+        // Only photos this update already had can be kept; no pointing at other files.
+        $photoPaths = array_values(array_intersect($keptPhotos, $currentPhotos));
 
         if ($request->hasFile('photos')) {
             foreach ($request->file('photos') as $photo) {
@@ -123,7 +133,7 @@ class CampaignUpdateController extends Controller
     public function destroy($campaignId, $updateId)
     {
         $campaign = Campaign::where('id', $campaignId)
-            ->where('foundation_id', $this->getFoundationId())
+            ->where('foundation_id', $this->getVerifiedFoundationId())
             ->firstOrFail();
 
         $update = CampaignUpdate::where('id', $updateId)
@@ -172,9 +182,12 @@ class CampaignUpdateController extends Controller
     {
         $donor = auth()->user();
 
-        // must belong to a campaign the donor donated to, or a foundation they follow
+        // Any donor may react to updates they can see: the foundation profile page
+        // shows every verified foundation's updates to all donors. Updates of
+        // suspended / unverified foundations are hidden, so they can't be reacted to.
         $update = CampaignUpdate::where('id', $updateId)
             ->where('campaign_id', $campaignId)
+            ->whereHas('campaign.foundation', fn($q) => $q->where('status', 'verified'))
             ->firstOrFail();
 
         $existing = UpdateReaction::where('donor_id', $donor->id)
@@ -204,6 +217,23 @@ class CampaignUpdateController extends Controller
     private function getFoundationId()
     {
         return Foundation::where('user_id', auth()->id())->firstOrFail()->id;
+    }
+
+    /**
+     * For posting / editing / deleting updates. Only approved foundations may
+     * do this, so a suspended foundation can't message its past donors.
+     */
+    private function getVerifiedFoundationId()
+    {
+        $foundation = Foundation::where('user_id', auth()->id())->firstOrFail();
+
+        abort_if(
+            $foundation->status !== 'verified',
+            403,
+            'Your foundation must be verified by the super admin to manage campaign updates.'
+        );
+
+        return $foundation->id;
     }
 
     private function notifyDonors(Campaign $campaign, CampaignUpdate $update)

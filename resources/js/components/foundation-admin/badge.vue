@@ -29,10 +29,10 @@ defineProps({
   text-transform: capitalize;
   white-space: nowrap;
 }
-.fa-badge.success { background: #f0fdf4; color: #059669; }
-.fa-badge.warning { background: #fefce8; color: #92400e; }
-.fa-badge.danger  { background: #fef2f2; color: #dc2626; }
-.fa-badge.neutral { background: #f1f5f9; color: #64748b; }
-.fa-badge.info    { background: #eff6ff; color: #3b82f6; }
+.fa-badge.success { background: #f0fdf4; color: var(--fa-success); }
+.fa-badge.warning { background: #fefce8; color: var(--fa-warning); }
+.fa-badge.danger  { background: #fef2f2; color: var(--fa-danger); }
+.fa-badge.neutral { background: #f1f5f9; color: var(--fa-muted); }
+.fa-badge.info    { background: var(--fa-primary-soft); color: var(--fa-primary); }
 .fa-badge.purple  { background: #f5f3ff; color: #7c3aed; }
 </style>

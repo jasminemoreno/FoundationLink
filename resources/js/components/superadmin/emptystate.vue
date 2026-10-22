@@ -8,7 +8,7 @@
   </template>
   
   <script setup>
-  import Spinner from './Spinner.vue'
+  import Spinner from './spinner.vue'
   
   defineProps({
     loading: { type: Boolean, default: false },

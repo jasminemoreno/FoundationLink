@@ -32,14 +32,16 @@ class Donation extends Model
         'donated_at' => 'datetime',
     ];
 
+    // withTrashed: a donation is history, so it still shows its campaign / donor
+    // after either is soft-deleted (otherwise donation lists crash on null).
     public function campaign()
     {
-        return $this->belongsTo(Campaign::class);
+        return $this->belongsTo(Campaign::class)->withTrashed();
     }
 
     public function donor()
     {
-        return $this->belongsTo(User::class, 'donor_id');
+        return $this->belongsTo(User::class, 'donor_id')->withTrashed();
     }
 
     public function paymentMethod()

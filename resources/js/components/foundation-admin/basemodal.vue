@@ -44,7 +44,7 @@
   <style scoped>
   .fa-modal-overlay {
     position: fixed; inset: 0;
-    background: rgba(15,45,82,0.4);
+    background: rgba(30,58,138,0.4);
     backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center;
     z-index: 100; padding: 24px;
@@ -56,7 +56,7 @@
     max-width: 100%;
     max-height: 88vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(15,45,82,0.2);
+    box-shadow: 0 20px 60px rgba(30,58,138,0.2);
     box-sizing: border-box;
   }
   
@@ -64,13 +64,13 @@
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 22px; gap: 12px;
   }
-  .fa-modal-head h3 { font-size: 1.05rem; color: #0F2D52; margin: 0; }
+  .fa-modal-head h3 { font-size: 1.05rem; color: var(--fa-heading); margin: 0; }
   
   .fa-modal-close {
     width: 30px; height: 30px; border-radius: 8px;
-    border: 1px solid #e2e8f0; background: transparent;
+    border: 1px solid var(--fa-border); background: transparent;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: #64748b; transition: background 0.15s;
+    cursor: pointer; color: var(--fa-muted); transition: background 0.15s;
     flex-shrink: 0;
   }
   .fa-modal-close:hover { background: #f1f5f9; }

@@ -45,6 +45,7 @@
 </template>
 
 <script setup>
+import '@/assets/foundation-theme.css'
 defineProps({
   showStepper: { type: Boolean, default: true }
 })
@@ -95,7 +96,7 @@ defineProps({
 .logo-foundation {
   font-size: 1.3rem;
   font-weight: 800;
-  color: #0d47a1;
+  color: var(--fa-primary-hover);
 }
 
 .logo-link {
@@ -104,7 +105,7 @@ defineProps({
 
 .logo-tagline {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--fa-text-2);
 }
 
 /* HERO */
@@ -115,7 +116,7 @@ defineProps({
 .hero-line1 {
   font-size: 2rem;
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--fa-text);
 }
 
 .hero-line2 {
@@ -180,18 +181,18 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0d47a1;
+  color: var(--fa-primary-hover);
 }
 
 :deep(.feature-title) {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--fa-text);
 }
 
 :deep(.feature-desc) {
   font-size: 0.75rem;
-  color: #666;
+  color: var(--fa-text-2);
 }
 
 /* =========================

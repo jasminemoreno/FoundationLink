@@ -24,13 +24,14 @@ class SuperAdminReportController extends Controller
         $totalDonors = User::where('role', 'donor')->count();
         $completedCampaigns = Campaign::where('status', 'completed')->count();
 
-        /* ── Period-scoped totals for % change ── */
-        $periodRaised = Donation::where('type', 'monetary')->where('status', 'received')->where('created_at', '>=', $from)->sum('amount');
-        $periodDonors = User::where('role', 'donor')->where('created_at', '>=', $from)->count();
-        $periodDonations = Donation::where('created_at', '>=', $from)->count();
-        $avgDonation = $periodDonations > 0
-            ? Donation::where('type', 'monetary')->where('created_at', '>=', $from)->avg('amount')
-            : 0;
+        /* ── Period-scoped totals for % change ──
+           $from is null for "all time"; where('created_at', '>=', null) throws,
+           so the date filter is only applied when there is a start date. */
+        $inPeriod = fn($q) => $q->when($from, fn($q) => $q->where('created_at', '>=', $from));
+
+        $periodRaised = $inPeriod(Donation::where('type', 'monetary')->where('status', 'received'))->sum('amount');
+        $periodDonors = $inPeriod(User::where('role', 'donor'))->count();
+        $avgDonation = $inPeriod(Donation::where('type', 'monetary')->where('status', 'received'))->avg('amount') ?? 0;
 
         /* ── KPIs ── */
         $kpis = [
@@ -75,11 +76,10 @@ class SuperAdminReportController extends Controller
         /* ── Monthly donations (last 6 months) ── */
         $monthly = [];
         for ($i = 5; $i >= 0; $i--) {
-            $month = now()->subMonths($i);
-            $monthKey = $month->format('Y-m');
+            $month = now()->subMonthsNoOverflow($i);
             $amount = Donation::where('type', 'monetary')
                 ->where('status', 'received')
-                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$monthKey])
+                ->whereBetween('created_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
                 ->sum('amount');
             $monthly[] = [
                 'month' => $month->format('M'),
@@ -119,7 +119,8 @@ class SuperAdminReportController extends Controller
             ->when($from, fn($q) => $q->where('donations.created_at', '>=', $from))
             ->select(
                 'users.id',
-                DB::raw("CONCAT(users.first_name, ' ', users.last_name) as name"),
+                'users.first_name',
+                'users.last_name',
                 DB::raw('COUNT(*) as count'),
                 DB::raw('SUM(donations.amount) as total')
             )
@@ -129,10 +130,11 @@ class SuperAdminReportController extends Controller
             ->get()
             ->values()
             ->map(function ($d, $i) use ($avatarColors) {
-                $parts = explode(' ', trim($d->name));
+                // Name joined in PHP rather than SQL CONCAT, which isn't portable across databases
+                $name = trim($d->first_name . ' ' . $d->last_name);
                 return [
-                    'name' => $d->name,
-                    'initials' => strtoupper(substr($parts[0] ?? '', 0, 1) . substr($parts[1] ?? '', 0, 1)),
+                    'name' => $name,
+                    'initials' => strtoupper(substr($d->first_name ?? '', 0, 1) . substr($d->last_name ?? '', 0, 1)),
                     'color' => $avatarColors[$i % count($avatarColors)],
                     'count' => $d->count,
                     'amount' => '₱' . number_format($d->total, 0),

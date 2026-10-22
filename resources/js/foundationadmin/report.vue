@@ -68,55 +68,60 @@
         </div>
         <div class="panel-body">
           <EmptyState v-if="perCampaign.length === 0" icon="📋" message="No campaigns yet." compact />
-          <table v-else class="report-table">
-            <thead>
-              <tr>
-                <th>Campaign</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Goal</th>
-                <th>Raised</th>
-                <th>Progress</th>
-                <th>Items</th>
-                <th>Donors</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="c in perCampaign" :key="c.id">
-                <td class="campaign-name">{{ c.title }}</td>
-                <td>
-                  <Badge :label="statusLabel(c.status)" :tone="toneForCampaignStatus(c.status)" />
-                </td>
-                <td>
-                  <Badge :label="c.type" :tone="toneForType(c.type)" />
-                </td>
-                <td>
-                  <span v-if="c.type !== 'item'">₱{{ formatMoney(c.goal_amount) }}</span>
-                  <span v-else class="muted">—</span>
-                </td>
-                <td class="raised-col">
-                  <span v-if="c.type !== 'item'">₱{{ formatMoney(c.raised) }}</span>
-                  <span v-else class="muted">—</span>
-                </td>
-                <td style="min-width: 140px;">
-                  <div v-if="c.type !== 'item'" class="inline-progress">
-                    <div class="inline-bar">
-                      <div
-                        class="inline-fill"
-                        :style="{ width: c.percent + '%', background: progressColor(c.percent) }"
-                      ></div>
+          <div v-else class="table-scroll">
+            <table class="report-table">
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Status</th>
+                  <th>Type</th>
+                  <th>Goal</th>
+                  <th>Raised</th>
+                  <th>Progress</th>
+                  <th>Items</th>
+                  <th>Donors</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="c in perCampaign" :key="c.id">
+                  <td class="campaign-name">{{ c.title }}</td>
+                  <td>
+                    <Badge :label="statusLabel(c.status)" :tone="toneForCampaignStatus(c.status)" />
+                  </td>
+                  <td>
+                    <Badge :label="c.type" :tone="toneForType(c.type)" />
+                  </td>
+                  <td>
+                    <span v-if="c.type !== 'item'">₱{{ formatMoney(c.goal_amount) }}</span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td class="raised-col">
+                    <span v-if="c.type !== 'item'">₱{{ formatMoney(c.raised) }}</span>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td style="min-width: 140px;">
+                    <div v-if="c.type !== 'item'" class="inline-progress">
+                      <div class="inline-bar">
+                        <div
+                          class="inline-fill"
+                          :style="{ width: c.percent + '%', background: progressColor(c.percent) }"
+                        ></div>
+                      </div>
+                      <span class="inline-pct">{{ c.percent }}%</span>
                     </div>
-                    <span class="inline-pct">{{ c.percent }}%</span>
-                  </div>
-                  <span v-else class="muted">—</span>
-                </td>
-                <td class="center">{{ c.items }}</td>
-                <td class="center">{{ c.donors }}</td>
-              </tr>
-            </tbody>
-          </table>
+                    <span v-else class="muted">—</span>
+                  </td>
+                  <td class="center">{{ c.items }}</td>
+                  <td class="center">{{ c.donors }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
+
+      <!-- CAMPAIGN TIMELINE: donations per day / month with promotions on the chart -->
+      <CampaignTimeline :campaigns="perCampaign" />
 
     </div>
   </div>
@@ -130,6 +135,7 @@ import PendingVerificationBanner from "../components/foundation-admin/pendingver
 import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import Badge from "../components/foundation-admin/badge.vue"
+import CampaignTimeline from "../components/foundation-admin/CampaignTimeline.vue"
 
 const isLoading  = ref(false)
 const summary    = ref({})
@@ -180,37 +186,37 @@ const summaryCards = computed(() => [
   {
     label: "Total Raised",
     value: "₱" + formatMoney(summary.value.total_raised),
-    bg: "#f0fdf4", col: "#059669",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+    bg: "#ecfdf5", col: "#047857",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`
   },
   {
     label: "Total Donations",
     value: summary.value.total_donations ?? 0,
-    bg: "#eff6ff", col: "#3b82f6",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`
+    bg: "#e8f0fe", col: "#2563eb",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 15 6 6"/><path d="M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z"/></svg>`
   },
   {
     label: "Total Donors",
     value: summary.value.total_donors ?? 0,
-    bg: "#f5f3ff", col: "#7c3aed",
+    bg: "#ede9fe", col: "#6d28d9",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`
   },
   {
     label: "Item Donations",
     value: summary.value.total_items ?? 0,
-    bg: "#fefce8", col: "#ca8a04",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`
+    bg: "#fef3c7", col: "#b45309",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`
   },
   {
     label: "Total Campaigns",
     value: summary.value.total_campaigns ?? 0,
-    bg: "#fdf2f8", col: "#db2777",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
+    bg: "#fce7f3", col: "#be185d",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
   },
   {
     label: "Active Campaigns",
     value: summary.value.active_campaigns ?? 0,
-    bg: "#ecfdf5", col: "#10b981",
+    bg: "#ecfdf5", col: "#047857",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`
   },
 ])
@@ -223,9 +229,9 @@ function monthBarHeight(val) {
 function formatMoney(v) { return Number(v || 0).toLocaleString() }
 
 function progressColor(pct) {
-  if (pct >= 80) return "#059669"
-  if (pct >= 50) return "#0F2D52"
-  return "#3b82f6"
+  if (pct >= 80) return "#047857"
+  if (pct >= 50) return "#2563eb"
+  return "#2563eb"
 }
 
 function statusLabel(s) {
@@ -484,44 +490,48 @@ async function exportPdf() {
 
 /* EXPORT BUTTON */
 .toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
-.export-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 10px; background: #0F2D52; color: #fff; font-size: 0.83rem; font-weight: 700; cursor: pointer; transition: background 0.2s ease, opacity 0.2s ease; }
+.export-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 10px; background: var(--fa-primary); color: #fff; font-size: 0.83rem; font-weight: 700; cursor: pointer; transition: background 0.2s ease, opacity 0.2s ease; }
 .export-btn:hover:not(:disabled) { background: #163d6e; }
 .export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.stats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; } /* wraps: 2 per row on phones */
 
-.panel { background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(15,45,82,0.06); overflow: hidden; }
+.panel { background: white; border-radius: 14px; border: 1px solid var(--fa-border); box-shadow: 0 1px 4px rgba(30,58,138,0.06); overflow: hidden; }
 .panel-head  { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid #f1f5f9; }
-.panel-title { font-size: 0.92rem; font-weight: 700; color: #0F2D52; margin: 0; }
+.panel-title { font-size: 0.92rem; font-weight: 700; color: var(--fa-heading); margin: 0; }
 .panel-body  { padding: 20px; }
 
 /* MONTHLY GRID */
-.monthly-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.monthly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
 .month-card   { background: #f8fafc; border-radius: 12px; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; }
-.month-label  { font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; }
-.month-raised { font-size: 1rem; font-weight: 800; color: #0F2D52; }
+.month-label  { font-size: 0.72rem; font-weight: 600; color: var(--fa-muted); text-transform: uppercase; }
+.month-raised { font-size: 1rem; font-weight: 800; color: var(--fa-heading); }
 .month-meta   { display: flex; flex-direction: column; gap: 3px; }
 .meta-item    { font-size: 0.7rem; font-weight: 500; }
-.meta-item.monetary { color: #059669; }
-.meta-item.item     { color: #3b82f6; }
-.meta-item.total    { color: #94a3b8; }
-.month-bar    { height: 60px; background: #e2e8f0; border-radius: 6px; overflow: hidden; display: flex; align-items: flex-end; margin-top: 4px; }
-.month-bar-fill { width: 100%; background: linear-gradient(180deg, #3b82f6, #0F2D52); border-radius: 6px; transition: height 0.5s ease; min-height: 4px; }
+.meta-item.monetary { color: var(--fa-success); }
+.meta-item.item     { color: var(--fa-primary); }
+.meta-item.total    { color: var(--fa-muted); }
+.month-bar    { height: 60px; background: var(--fa-border); border-radius: 6px; overflow: hidden; display: flex; align-items: flex-end; margin-top: 4px; }
+.month-bar-fill { width: 100%; background: linear-gradient(180deg, var(--fa-primary), var(--fa-primary)); border-radius: 6px; transition: height 0.5s ease; min-height: 4px; }
 
 /* TABLE */
 .report-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-.report-table th { text-align: left; padding: 10px 12px; color: #94a3b8; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; }
-.report-table td { padding: 12px; border-bottom: 1px solid #f8fafc; color: #475569; vertical-align: middle; }
+.report-table th { text-align: left; padding: 10px 12px; color: var(--fa-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; }
+.report-table td { padding: 12px; border-bottom: 1px solid #f8fafc; color: var(--fa-text-2); vertical-align: middle; }
 .report-table tbody tr:last-child td { border-bottom: none; }
 .report-table tbody tr:hover { background: #f8fafc; }
 
-.campaign-name { font-weight: 600; color: #0F2D52; max-width: 160px; }
-.raised-col    { font-weight: 700; color: #059669; }
+.campaign-name { font-weight: 600; color: var(--fa-heading); max-width: 160px; }
+.raised-col    { font-weight: 700; color: var(--fa-success); }
 .center        { text-align: center; }
 .muted         { color: #cbd5e1; }
 
 .inline-progress { display: flex; align-items: center; gap: 8px; }
-.inline-bar  { flex: 1; height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.inline-bar  { flex: 1; height: 6px; background: var(--fa-border); border-radius: 99px; overflow: hidden; }
 .inline-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
-.inline-pct  { font-size: 0.72rem; font-weight: 700; color: #0F2D52; white-space: nowrap; }
+.inline-pct  { font-size: 0.72rem; font-weight: 700; color: var(--fa-heading); white-space: nowrap; }
+
+/* Wide table: scrolls sideways inside its own box on small screens (never cut off) */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll .report-table { min-width: 720px; }
 </style>

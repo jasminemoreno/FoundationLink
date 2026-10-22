@@ -69,8 +69,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
-import Spinner from '../components/donor/spinner.vue'
-import EmptyState from '../components/donor/emptystate.vue'
+import Spinner from '../components/donor/Spinner.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
 import { formatDateTime } from '../composable/donor.js'
 
 const router = useRouter()

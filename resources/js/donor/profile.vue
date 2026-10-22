@@ -217,12 +217,26 @@
             <div class="panel-body">
 
               <div class="form-group">
+                <label>Current Password</label>
+                <div class="pass-wrap">
+                  <input
+                    v-model="passForm.current_password"
+                    :type="showCurrentPass ? 'text' : 'password'"
+                    placeholder="Enter your current password"
+                  />
+                  <button class="eye-btn" type="button" @click="showCurrentPass = !showCurrentPass">
+                    👁
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group">
                 <label>New Password</label>
                 <div class="pass-wrap">
                   <input
                     v-model="passForm.password"
                     :type="showPass ? 'text' : 'password'"
-                    placeholder="Min 8 characters"
+                    placeholder="Min 12 characters, with a number and a symbol"
                   />
                   <button class="eye-btn" type="button" @click="showPass = !showPass">
                     👁
@@ -298,6 +312,7 @@ const infoError   = ref('')
 const passSaving = ref(false)
 const passSuccess = ref('')
 const passError   = ref('')
+const showCurrentPass = ref(false)
 const showPass    = ref(false)
 const showConfirm = ref(false)
 
@@ -321,6 +336,7 @@ const form = reactive({
 })
 
 const passForm = reactive({
+  current_password:      '',
   password:              '',
   password_confirmation: '',
 })
@@ -345,7 +361,7 @@ async function load() {
     donorStats.value = {
       total_donations: donations.length,
       total_donated:   donations
-        .filter(d => d.type === 'monetary')
+        .filter(d => d.type === 'monetary' && d.status === 'received')
         .reduce((s, d) => s + Number(d.amount || 0), 0),
     }
 
@@ -456,12 +472,17 @@ async function savePassword() {
   passSuccess.value = ''
   passError.value   = ''
 
+  if (!passForm.current_password) {
+    passError.value = 'Please enter your current password.'
+    return
+  }
   if (!passForm.password) {
     passError.value = 'Please enter a new password.'
     return
   }
-  if (passForm.password.length < 8) {
-    passError.value = 'Password must be at least 8 characters.'
+  // Same rules as sign-up
+  if (passForm.password.length < 12 || !/\d/.test(passForm.password) || !/[^a-zA-Z0-9]/.test(passForm.password)) {
+    passError.value = 'Password must be at least 12 characters and include a number and a special character.'
     return
   }
   if (passForm.password !== passForm.password_confirmation) {
@@ -472,10 +493,12 @@ async function savePassword() {
   passSaving.value = true
   try {
     await api.post('/donor/profile', {
+      current_password:      passForm.current_password,
       password:              passForm.password,
       password_confirmation: passForm.password_confirmation,
     })
     passSuccess.value = 'Password updated successfully!'
+    passForm.current_password      = ''
     passForm.password              = ''
     passForm.password_confirmation = ''
     setTimeout(() => passSuccess.value = '', 3000)

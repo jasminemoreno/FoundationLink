@@ -250,10 +250,10 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
-import Spinner from '../components/donor/spinner.vue'
-import EmptyState from '../components/donor/emptystate.vue'
-import FoundationBubble from '../components/donor/foundationbubble.vue'
-import StatCard from '../components/donor/statcard.vue'
+import Spinner from '../components/donor/Spinner.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
+import FoundationBubble from '../components/donor/Foundationbubble.vue'
+import StatCard from '../components/donor/Statcard.vue'
 import { formatMoney, formatDate, getImage } from '../composable/donor.js'
 
 const route  = useRoute()
@@ -340,7 +340,8 @@ function tabCount(key) {
 const stats = computed(() => [
   {
     label: "Total Donated",
-    value: "₱" + formatMoney(donations.value.filter(d => d.type === 'monetary').reduce((s, d) => s + Number(d.amount || 0), 0)),
+    // Only donations the foundation confirmed receiving
+    value: "₱" + formatMoney(donations.value.filter(d => d.type === 'monetary' && d.status === 'received').reduce((s, d) => s + Number(d.amount || 0), 0)),
     bg: "linear-gradient(135deg, #d5f5e3, #a8e6c1)", col: "#0e5c36",
     icon: `<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
   },

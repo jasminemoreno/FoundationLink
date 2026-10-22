@@ -5,6 +5,21 @@
 
     <EmptyState v-if="isLoading" loading message="Loading settings..." />
 
+    <!-- LOCKED: sign-up not finished (no foundation yet, or documents not uploaded) -->
+    <div v-else-if="setupStep" class="panel lock-panel">
+      <div class="lock-icon">🔒</div>
+      <h3 class="lock-title">Settings are locked</h3>
+      <p class="lock-text">
+        Please finish signing up first. You can edit your foundation's settings once you have
+        {{ setupStep === 'create_foundation'
+          ? "added your foundation's details and uploaded your verification documents."
+          : "uploaded your verification documents." }}
+      </p>
+      <router-link class="btn-save lock-btn" :to="setupStep === 'create_foundation' ? '/foundation/create' : '/foundation/verification'">
+        {{ setupStep === 'create_foundation' ? 'Add your foundation' : 'Upload your documents' }}
+      </router-link>
+    </div>
+
     <div v-else class="settings-layout">
 
       <!-- LEFT: MAIN -->
@@ -249,6 +264,8 @@ import Badge from "../components/foundation-admin/badge.vue"
 import Spinner from "../components/foundation-admin/spinner.vue"
 
 const isLoading   = ref(false)
+// 'create_foundation' / 'upload_documents' while sign-up is unfinished (Settings locked), else null
+const setupStep   = ref(null)
 const foundation  = ref(null)
 const saving      = ref(false)
 const brandSaving = ref(false)
@@ -319,7 +336,19 @@ async function loadPayments() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // Settings are locked until sign-up is finished (the server refuses saves too)
+  isLoading.value = true
+  try {
+    const res = await api.get("/foundation/dashboard")
+    setupStep.value = res.data?.setup_step ?? null
+  } catch (err) {
+    console.error("Failed to check sign-up status:", err)
+  }
+  if (setupStep.value) {
+    isLoading.value = false
+    return
+  }
   load()
   loadPayments()
 })
@@ -472,42 +501,49 @@ function toneForFoundationStatus(s) {
 .settings-main   { display: flex; flex-direction: column; }
 .settings-side   { display: flex; flex-direction: column; }
 
-.panel { background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(15,45,82,0.06); overflow: hidden; }
+.panel { background: white; border-radius: 14px; border: 1px solid var(--fa-border); box-shadow: 0 1px 4px rgba(30,58,138,0.06); overflow: hidden; }
 .panel-head  { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid #f1f5f9; }
-.panel-title { font-size: 0.92rem; font-weight: 700; color: #0F2D52; margin: 0; }
-.panel-hint  { font-size: 0.82rem; color: #94a3b8; margin: 0 0 16px; }
+.panel-title { font-size: 0.92rem; font-weight: 700; color: var(--fa-heading); margin: 0; }
+.panel-hint  { font-size: 0.82rem; color: var(--fa-muted); margin: 0 0 16px; }
 .panel-body  { padding: 20px; }
 
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+.form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fa-text-2); margin-bottom: 6px; }
 .form-group input,
 .form-group textarea {
-  width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+  width: 100%; padding: 10px 14px; border: 1px solid var(--fa-border); border-radius: 10px;
   font-size: 0.87rem; outline: none; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s;
 }
 .form-group input:focus,
-.form-group textarea:focus { border-color: #0F2D52; box-shadow: 0 0 0 3px rgba(15,45,82,0.08); }
+.form-group textarea:focus { border-color: var(--fa-heading); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
 .form-group textarea { height: 100px; resize: none; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-.section-divider { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.07em; margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
+.section-divider { font-size: 0.72rem; font-weight: 700; color: var(--fa-muted); text-transform: uppercase; letter-spacing: 0.07em; margin: 4px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
 
-.success-text { font-size: 0.82rem; color: #059669; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 4px; }
-.error-text   { font-size: 0.82rem; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 4px; }
+.success-text { font-size: 0.82rem; color: var(--fa-success); background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 4px; }
+.error-text   { font-size: 0.82rem; color: var(--fa-danger); background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 4px; }
 
 .form-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
-.btn-save { padding: 10px 22px; border: none; background: #0F2D52; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 130px; transition: background 0.2s; }
-.btn-save:hover:not(:disabled) { background: #1a3f6b; }
+.btn-save { padding: 10px 22px; border: none; background: var(--fa-primary); color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; min-width: 130px; transition: background 0.2s; }
+.btn-save:hover:not(:disabled) { background: var(--fa-primary-hover); }
 .btn-save:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* LOCKED (sign-up not finished) */
+.lock-panel { max-width: 560px; margin: 24px auto; padding: 36px 28px; text-align: center; }
+.lock-icon  { font-size: 2.2rem; margin-bottom: 8px; }
+.lock-title { margin: 0 0 8px; font-size: 1.1rem; font-weight: 800; color: var(--fa-heading); }
+.lock-text  { margin: 0 auto 20px; max-width: 440px; color: var(--fa-muted); font-size: 0.9rem; line-height: 1.6; }
+.lock-btn   { display: inline-flex; text-decoration: none; }
 
 /* BRANDING */
 .branding-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
-.upload-area { border: 2px dashed #e2e8f0; border-radius: 12px; cursor: pointer; overflow: hidden; transition: border-color 0.2s; display: flex; align-items: center; justify-content: center; }
-.upload-area:hover { border-color: #0F2D52; }
+.upload-area { border: 2px dashed var(--fa-border); border-radius: 12px; cursor: pointer; overflow: hidden; transition: border-color 0.2s; display: flex; align-items: center; justify-content: center; }
+.upload-area:hover { border-color: var(--fa-heading); }
 .upload-area.square { height: 120px; }
 .upload-area.wide   { height: 120px; }
 .upload-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #94a3b8; font-size: 0.78rem; padding: 16px; }
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--fa-muted); font-size: 0.78rem; padding: 16px; }
 
 /* PAYMENT ACCOUNTS */
 .payment-account-row { padding: 16px 0; border-bottom: 1px solid #f1f5f9; }
@@ -515,24 +551,32 @@ function toneForFoundationStatus(s) {
 .payment-account-head { display: flex; align-items: center; gap: 12px; }
 .payment-account-icon { font-size: 1.6rem; flex-shrink: 0; }
 .payment-account-info { flex: 1; }
-.payment-account-name { font-size: 0.88rem; font-weight: 700; color: #0F2D52; }
-.payment-account-desc { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+.payment-account-name { font-size: 0.88rem; font-weight: 700; color: var(--fa-heading); }
+.payment-account-desc { font-size: 0.75rem; color: var(--fa-muted); margin-top: 2px; }
 
 /* FOUNDATION PREVIEW CARD */
-.foundation-card { border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
-.fc-cover { height: 80px; background: #0F2D52; background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
-.fc-cover-placeholder { color: rgba(255,255,255,0.4); font-size: 0.75rem; }
+.foundation-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--fa-border); }
+.fc-cover { height: 80px; background: var(--fa-primary); background-size: cover; background-position: center; display: flex; align-items: center; justify-content: center; }
+.fc-cover-placeholder { color: rgba(255,255,255,0.92); font-size: 0.75rem; }
 .fc-body  { padding: 12px 14px; }
-.fc-logo  { width: 40px; height: 40px; border-radius: 10px; background: #0F2D52; color: white; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: -24px; border: 2px solid white; margin-bottom: 8px; overflow: hidden; }
+.fc-logo  { width: 40px; height: 40px; border-radius: 10px; background: var(--fa-primary); color: white; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: -24px; border: 2px solid white; margin-bottom: 8px; overflow: hidden; }
 .fc-logo img { width: 100%; height: 100%; object-fit: cover; }
-.fc-name    { font-size: 0.88rem; font-weight: 700; color: #0F2D52; margin-bottom: 4px; }
-.fc-desc    { font-size: 0.75rem; color: #64748b; line-height: 1.4; margin-bottom: 6px; }
-.fc-address { font-size: 0.72rem; color: #94a3b8; }
+.fc-name    { font-size: 0.88rem; font-weight: 700; color: var(--fa-heading); margin-bottom: 4px; }
+.fc-desc    { font-size: 0.75rem; color: var(--fa-muted); line-height: 1.4; margin-bottom: 6px; }
+.fc-address { font-size: 0.72rem; color: var(--fa-muted); }
 
 /* INFO LIST */
-.info-list { padding: 4px 0; }
+.info-list { padding: 4px 20px; } /* same side spacing as the other panels */
 .info-row  { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.83rem; }
 .info-row:last-child { border-bottom: none; }
-.info-label { color: #94a3b8; font-size: 0.78rem; }
-.id-badge   { font-size: 0.75rem; font-weight: 700; background: #f1f5f9; color: #0F2D52; padding: 2px 8px; border-radius: 6px; }
+.info-label { color: var(--fa-muted); font-size: 0.78rem; }
+.id-badge   { font-size: 0.75rem; font-weight: 700; background: #f1f5f9; color: var(--fa-heading); padding: 2px 8px; border-radius: 6px; }
+
+/* Small screens: the side panel goes under the form; two-column rows stack */
+@media (max-width: 1023px) {
+  .settings-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .form-row, .branding-grid { grid-template-columns: 1fr; }
+}
 </style>

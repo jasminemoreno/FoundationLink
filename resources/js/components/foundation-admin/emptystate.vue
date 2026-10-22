@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: center;
     padding: 60px;
-    color: #94a3b8;
+    color: var(--fa-muted);
     gap: 10px;
     text-align: center;
     font-size: 0.85rem;

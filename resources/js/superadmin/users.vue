@@ -147,6 +147,10 @@
             <span class="mg-label">Joined</span>
             <span>{{ viewUser.joined }}</span>
           </div>
+          <div class="mg-item mg-wide" v-if="viewUser.status === 'suspended' && viewUser.suspension_reason">
+            <span class="mg-label">Suspension reason</span>
+            <span>{{ viewUser.suspension_reason }}</span>
+          </div>
         </div>
       </div>
 
@@ -162,6 +166,38 @@
           v-else-if="viewUser"
           @click="toggleStatus(viewUser); viewUser = null"
         >Activate User</button>
+      </template>
+    </BaseModal>
+
+    <!-- SUSPEND MODAL -->
+    <BaseModal
+      :model-value="!!suspendTarget"
+      @update:model-value="v => !v && closeSuspend()"
+      width="420px"
+    >
+      <div class="suspend-body" v-if="suspendTarget">
+        <h3>Suspend {{ suspendTarget.name }}?</h3>
+        <p class="suspend-note">
+          The user will be signed out and cannot log in again until you activate the account.
+          The reason below is shown to the user when they try to log in.
+        </p>
+        <label class="suspend-label" for="suspend-reason">Reason for suspension</label>
+        <textarea
+          id="suspend-reason"
+          v-model="suspendReason"
+          class="suspend-textarea"
+          rows="4"
+          maxlength="500"
+          placeholder="e.g. Submitted false proof of payment on several donations"
+        ></textarea>
+        <p v-if="suspendError" class="suspend-error">{{ suspendError }}</p>
+      </div>
+
+      <template #footer>
+        <button class="btn-cancel" @click="closeSuspend()">Cancel</button>
+        <button class="btn-danger" :disabled="suspending" @click="confirmSuspend">
+          {{ suspending ? 'Suspending...' : 'Suspend User' }}
+        </button>
       </template>
     </BaseModal>
 
@@ -222,13 +258,68 @@ const paginated  = computed(() => {
   return filtered.value.slice(start, start + perPage)
 })
 
-/* ── TOGGLE STATUS ── */
-async function toggleStatus(u) {
-  const newStatus = u.status === 'suspended' ? 'active' : 'suspended'
+/* ── SUSPEND / ACTIVATE ── */
+const suspendTarget = ref(null)
+const suspendReason = ref('')
+const suspendError  = ref('')
+const suspending    = ref(false)
+
+// Suspending asks for a reason first; activating goes straight through.
+function toggleStatus(u) {
+  if (u.status === 'suspended') activateUser(u)
+  else openSuspend(u)
+}
+
+function openSuspend(u) {
+  suspendTarget.value = u
+  suspendReason.value = ''
+  suspendError.value  = ''
+}
+
+function closeSuspend() {
+  suspendTarget.value = null
+  suspendReason.value = ''
+  suspendError.value  = ''
+}
+
+function applyStatus(id, status, reason) {
+  const target = users.value.find(x => x.id === id)
+  if (target) {
+    target.status = status
+    target.suspension_reason = reason
+  }
+}
+
+async function confirmSuspend() {
+  const reason = suspendReason.value.trim()
+  if (reason.length < 5) {
+    suspendError.value = 'Please enter a reason (at least 5 characters).'
+    return
+  }
+
+  suspending.value = true
+  suspendError.value = ''
   try {
-    await api.patch(`/admin/users/${u.id}/status`, { status: newStatus })
-    const target = users.value.find(x => x.id === u.id)
-    if (target) target.status = newStatus
+    await api.patch(`/admin/users/${suspendTarget.value.id}/status`, {
+      status: 'suspended',
+      suspension_reason: reason,
+    })
+    applyStatus(suspendTarget.value.id, 'suspended', reason)
+    closeSuspend()
+  } catch (err) {
+    const errors = err.response?.data?.errors
+    suspendError.value = errors
+      ? Object.values(errors).flat().join(' ')
+      : (err.response?.data?.message || 'Failed to suspend the user.')
+  } finally {
+    suspending.value = false
+  }
+}
+
+async function activateUser(u) {
+  try {
+    await api.patch(`/admin/users/${u.id}/status`, { status: 'active' })
+    applyStatus(u.id, 'active', null)
   } catch (err) {
     console.error('Status update failed:', err)
   }
@@ -319,4 +410,16 @@ tbody td { padding: 12px 16px; font-size: 0.84rem; color: #475569; }
 .btn-cancel { padding: 9px 18px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-save   { padding: 9px 20px; border: none; background: #059669; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-danger { padding: 9px 20px; border: none; background: #dc2626; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
+
+/* New: suspension reason (view modal + suspend dialog) */
+.mg-wide { grid-column: 1 / -1; }
+.btn-danger:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.suspend-body { padding: 28px 28px 0; text-align: left; }
+.suspend-body h3 { font-size: 1.05rem; color: #0F2D52; margin: 0 0 8px; }
+.suspend-note { font-size: 0.82rem; color: #64748b; line-height: 1.6; margin: 0 0 16px; }
+.suspend-label { display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px; }
+.suspend-textarea { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 0.86rem; font-family: inherit; resize: none; outline: none; }
+.suspend-textarea:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+.suspend-error { font-size: 0.8rem; font-weight: 600; color: #dc2626; margin: 8px 0 0; }
 </style>

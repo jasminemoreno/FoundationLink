@@ -62,7 +62,8 @@ class FoundationPaymentAccountController extends Controller
             'accounts.*.account_number' => 'required|string|max:255',
         ]);
 
-        $foundation = $this->getFoundation();
+        // Part of Settings: locked until sign-up is finished
+        $foundation = FoundationController::foundationWithFinishedSignUp();
 
         foreach ($request->accounts as $item) {
             FoundationPaymentAccount::updateOrCreate(
@@ -85,7 +86,8 @@ class FoundationPaymentAccountController extends Controller
     ══════════════════════════════ */
     public function destroy($paymentMethodId)
     {
-        $foundation = $this->getFoundation();
+        // Part of Settings: locked until sign-up is finished
+        $foundation = FoundationController::foundationWithFinishedSignUp();
 
         FoundationPaymentAccount::where('foundation_id', $foundation->id)
             ->where('payment_method_id', $paymentMethodId)

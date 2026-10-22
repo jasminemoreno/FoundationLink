@@ -1,5 +1,12 @@
 <template>
-  <aside class="sidebar">
+  <aside class="sidebar" :class="{ open: sidebarOpen }" aria-label="Main menu">
+
+    <!-- Small screens only: close the slide-in menu -->
+    <button type="button" class="sidebar-close" aria-label="Close menu" @click="closeSidebar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
 
     <!-- LOGO -->
     <div class="sidebar-logo">
@@ -54,7 +61,9 @@ import { computed, onMounted } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import api from "@/services/api"
 import { useFoundation } from "../../composable/usefoundation"
+import { useFoundationSidebar } from "../../composable/useFoundationSidebar"
 
+const { sidebarOpen, closeSidebar } = useFoundationSidebar()
 const route = useRoute()
 const router = useRouter()
 
@@ -75,19 +84,22 @@ const initials = computed(() => {
 
 const navItems = [
   {
+    // Dashboard: overview panels (outline, to match the other icons)
     name: "Dashboard",
     route: "/foundation/dashboard",
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>`
   },
   {
+    // Campaigns: megaphone (same idea as the super admin's Campaigns)
     name: "Campaigns",
     route: "/foundation/campaign",
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
   },
   {
-    name: "Donation",
+    // Donations: hand holding a heart = giving (a plain heart reads as "like")
+    name: "Donations",
     route: "/foundation/donation",
-    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`
+    icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 15 6 6"/><path d="M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z"/></svg>`
   },
   {
     name: "Donors",
@@ -125,12 +137,14 @@ onMounted(() => {
 })
 </script>
 
+
 <style scoped>
+/* Light sidebar: white panel, dark readable text, soft-blue highlight for the
+   current page. Colours come from assets/foundation-theme.css. */
 .sidebar {
   width: 290px;
-  background:
-    radial-gradient(120% 55% at 15% 0%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 60%),
-    linear-gradient(180deg, #0b7fc0 0%, #0873b0 45%, #066499 100%);
+  background: var(--fa-surface);
+  border-right: 1px solid var(--fa-border);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -140,7 +154,7 @@ onMounted(() => {
   z-index: 100;
   overflow-y: auto;
   scrollbar-width: none;
-  box-shadow: 6px 0 30px rgba(9, 27, 66, 0.25);
+  box-shadow: 2px 0 12px rgba(30, 58, 138, 0.05);
 }
 
 .sidebar::-webkit-scrollbar { display: none; }
@@ -150,22 +164,19 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px 20px 22px;
+  padding: 30px 20px 20px;
 }
 
 .logo-badge {
-  width: 92px;
-  height: 92px;
+  width: 84px;
+  height: 84px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 0 0 6px rgba(255, 255, 255, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, var(--fa-primary-soft), #dbe8fd);
+  border: 1px solid var(--fa-primary-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -177,36 +188,33 @@ onMounted(() => {
 }
 
 .logo-initials {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 800;
-  color: #fff;
+  color: var(--fa-primary);
   letter-spacing: 0.02em;
 }
 
 .logo-text {
-  color: #fff;
-  font-size: 20px;
+  color: var(--fa-heading);
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.01em;
   text-align: center;
   line-height: 1.3;
   max-width: 100%;
   padding: 0 4px;
-
   /* Wrap up to 2 lines instead of truncating with ellipsis,
      so longer foundation names stay fully readable */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .sidebar-divider {
   height: 1px;
   margin: 0 20px 10px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+  background: var(--fa-border);
 }
 
 /* NAV */
@@ -219,13 +227,13 @@ onMounted(() => {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 13px 16px 13px 20px;
+  gap: 12px;
+  padding: 11px 14px 11px 16px;
   margin-bottom: 4px;
   border-radius: 12px;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--fa-text);
   text-decoration: none;
-  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .nav-accent {
@@ -233,22 +241,21 @@ onMounted(() => {
   left: 0;
   top: 50%;
   transform: translateY(-50%) scaleY(0);
-  width: 3px;
+  width: 4px;
   height: 22px;
-  border-radius: 3px;
-  background: #fff;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+  border-radius: 0 4px 4px 0;
+  background: var(--fa-primary);
   transition: transform 0.2s ease;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
+  background: var(--fa-primary-tint);
+  color: var(--fa-primary-hover);
 }
 
 .nav-item.active {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--fa-primary-soft);
+  color: var(--fa-primary-hover);
   font-weight: 700;
 }
 
@@ -256,11 +263,27 @@ onMounted(() => {
   transform: translateY(-50%) scaleY(1);
 }
 
-/* ICON */
+/* ICON CHIP: soft square behind each icon; turns solid blue on the current page */
+.nav-icon-chip {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fa-primary-tint);
+  color: var(--fa-primary);
+  flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.nav-item.active .nav-icon-chip {
+  background: var(--fa-primary);
+  color: #fff;
+}
+
 .nav-icon {
   display: flex;
-  min-width: 26px;
-  opacity: 1;
 }
 
 /* LABEL */
@@ -272,19 +295,20 @@ onMounted(() => {
 /* FOOTER */
 .sidebar-footer {
   padding: 18px 20px 22px;
+  border-top: 1px solid var(--fa-border-soft);
 }
 
 .logout-btn {
   width: 100%;
-  height: 48px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1.5px solid #dc2626;
+  border: 1.5px solid var(--fa-danger-border);
   border-radius: 12px;
-  background: #dc2626;
-  color: #fff;
+  background: var(--fa-danger-bg);
+  color: var(--fa-danger);
   font-weight: 700;
   font-size: 14.5px;
   cursor: pointer;
@@ -292,14 +316,50 @@ onMounted(() => {
 }
 
 .logout-btn:hover {
-  background: #fff;
-  border-color: #fff;
-  color: #e53e3e;
+  background: var(--fa-danger-solid);
+  border-color: var(--fa-danger-solid);
+  color: #fff;
 }
 
 .logout-btn:focus-visible,
 .nav-item:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--fa-primary);
   outline-offset: 2px;
+}
+
+.sidebar-close { display: none; }
+
+/* Phones / small tablets: off-screen until the header's menu button opens it */
+@media (max-width: 1023px) {
+  .sidebar {
+    width: min(290px, 86vw);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 8px 0 30px rgba(15, 23, 42, 0.2);
+  }
+  .sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--fa-border);
+    border-radius: 10px;
+    background: var(--fa-surface);
+    color: var(--fa-text-2);
+    cursor: pointer;
+  }
+  .sidebar-close:focus-visible { outline: 2px solid var(--fa-primary); outline-offset: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
 }
 </style>

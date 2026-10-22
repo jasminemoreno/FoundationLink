@@ -35,7 +35,7 @@ const imgError = ref(false)
 // image doesn't permanently lock out a fixed one.
 watch(() => props.src, () => { imgError.value = false })
 
-const palette = ["#3b82f6","#059669","#ca8a04","#7c3aed","#dc2626","#0891b2","#db2777"]
+const palette = ["#2563eb","#047857","#b45309","#6d28d9","#dc2626","#0e7490","#be185d"]
 
 const bgColor = computed(() => {
   const n = typeof props.seed === 'number' ? props.seed : String(props.seed).length

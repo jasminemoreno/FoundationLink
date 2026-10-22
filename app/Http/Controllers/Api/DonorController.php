@@ -11,6 +11,7 @@ use App\Models\Foundation;
 use App\Models\FoundationPaymentAccount;
 use App\Models\User;
 use App\Mail\FoundationEmailChangeVerification;
+use App\Support\Phone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -29,14 +30,19 @@ class DonorController extends Controller
             ->where('donor_id', $donor->id)
             ->latest()->get();
 
-        $featured = Campaign::with(['foundation', 'foundation.category', 'category'])
+        // Promoted campaigns first, then newest
+        $featured = Campaign::with(['foundation', 'foundation.category', 'category', 'activePromotion'])
             ->where('status', 'active')
+            ->whereHas('foundation', fn($q) => $q->where('status', 'verified'))
+            ->withExists('activePromotion as is_promoted')
+            ->orderByDesc('is_promoted')
             ->latest()->take(6)->get();
 
         return response()->json([
             'donor' => $donor,
-            'total_donated' => $donations->where('type', 'monetary')->sum('amount'),
-            'total_items' => $donations->where('type', 'item')->count(),
+            // Only donations the foundation confirmed receiving
+            'total_donated' => $donations->where('status', 'received')->where('type', 'monetary')->sum('amount'),
+            'total_items' => $donations->where('status', 'received')->where('type', 'item')->count(),
             'campaigns_supported' => $donations->pluck('campaign_id')->unique()->count(),
             'recent_donations' => $donations->take(5)->map(fn($d) => $this->formatDonation($d)),
             'featured_campaigns' => $featured->map(fn($c) => $this->formatCampaign($c)),
@@ -51,7 +57,9 @@ class DonorController extends Controller
         $donor = auth()->user();
         $tab = $request->get('tab', 'new');
 
-        $query = Campaign::with(['foundation', 'foundation.category', 'category']);
+        // Suspended / unverified foundations are hidden from donors entirely
+        $query = Campaign::with(['foundation', 'foundation.category', 'category', 'activePromotion'])
+            ->whereHas('foundation', fn($q) => $q->where('status', 'verified'));
 
         if ($tab === 'followed') {
             $followedIds = DB::table('foundation_followers')
@@ -81,7 +89,12 @@ class DonorController extends Controller
             $query->where('category_id', $request->category);
         }
 
-        $campaigns = $query->latest()->get();
+        // Promoted campaigns first, then newest
+        $campaigns = $query
+            ->withExists('activePromotion as is_promoted')
+            ->orderByDesc('is_promoted')
+            ->latest()
+            ->get();
 
         return response()->json($campaigns->map(fn($c) => $this->formatCampaign($c)));
     }
@@ -93,6 +106,7 @@ class DonorController extends Controller
     {
         $campaign = Campaign::with(['foundation', 'foundation.category', 'category', 'photos'])
             ->where('status', 'active')
+            ->whereHas('foundation', fn($q) => $q->where('status', 'verified'))
             ->findOrFail($id);
 
         return response()->json($this->formatCampaign($campaign, true));
@@ -120,7 +134,7 @@ class DonorController extends Controller
 
         $campaign = Campaign::with('foundation')->findOrFail($request->campaign_id);
 
-        if ($campaign->status !== 'active') {
+        if ($campaign->status !== 'active' || $campaign->foundation?->status !== 'verified') {
             return response()->json(['message' => 'This campaign is not accepting donations.'], 422);
         }
 
@@ -135,6 +149,18 @@ class DonorController extends Controller
         }
         if (in_array($request->type, ['monetary', 'both']) && !$request->payment_method_id) {
             return response()->json(['message' => 'Please select a payment method.'], 422);
+        }
+        if (in_array($request->type, ['monetary', 'both'])) {
+            // Must be switched on by the super admin and accepted by this campaign.
+            // accepted_payment_methods is stored as strings, so compare loosely.
+            $methodActive = \App\Models\PaymentMethod::where('id', $request->payment_method_id)
+                ->where('is_active', true)
+                ->exists();
+            $accepted = $campaign->accepted_payment_methods ?? [];
+
+            if (!$methodActive || !in_array($request->payment_method_id, $accepted)) {
+                return response()->json(['message' => 'This campaign does not accept that payment method.'], 422);
+            }
         }
         if (in_array($request->type, ['item', 'both']) && !$request->item_name) {
             return response()->json(['message' => 'Please enter an item name.'], 422);
@@ -175,7 +201,8 @@ class DonorController extends Controller
                 'status' => 'pending',
                 'donated_at' => $now,
             ]);
-            $campaign->increment('current_amount', $request->amount);
+            // current_amount is only raised once the foundation marks it received
+            // (DonationController::updateStatus), so unconfirmed pledges don't count.
             $created[] = $donation;
 
             $this->notifyFoundationOfDonation($campaign, $donor, '₱' . number_format($request->amount, 2));
@@ -320,6 +347,15 @@ class DonorController extends Controller
             ->take(50)
             ->get();
 
+        // Campaign updates are shown on the foundation's profile page, so map
+        // each update id to its foundation id in one query.
+        $updateFoundationIds = CampaignUpdate::whereIn(
+            'campaign_updates.id',
+            $notifications->where('type', 'campaign_update')->pluck('notifiable_id')
+        )
+            ->join('campaigns', 'campaigns.id', '=', 'campaign_updates.campaign_id')
+            ->pluck('campaigns.foundation_id', 'campaign_updates.id');
+
         return response()->json($notifications->map(fn($n) => [
             'id' => $n->id,
             'type' => $n->type,
@@ -327,7 +363,7 @@ class DonorController extends Controller
             'message' => $n->message,
             'date' => $n->created_at,
             'read' => $n->read_at !== null,
-            'link' => $this->resolveNotificationLink($n),
+            'link' => $this->resolveNotificationLink($n, $updateFoundationIds),
         ]));
     }
 
@@ -377,21 +413,41 @@ class DonorController extends Controller
     {
         $user = auth()->user();
 
+        Phone::normalizeRequest($request);
+
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'phone' => Phone::profileRule($user),
             'address' => 'nullable|string',
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
             'birthdate' => 'nullable|date',
-            'password' => 'nullable|min:8|confirmed',
+            // Same rules as sign-up, and the current password is required to change it
+            'current_password' => 'nullable|required_with:password|string',
+            'password' => [
+                'nullable',
+                'confirmed',
+                'min:12',
+                'regex:/^(?=.*\d)(?=.*[^a-zA-Z0-9]).{12,}$/',
+            ],
+        ], Phone::MESSAGES + [
+            'current_password.required_with' => 'Please enter your current password.',
+            'password.min' => 'Password must be at least 12 characters.',
+            'password.regex' => 'Password must include at least 1 number and 1 special character.',
         ]);
 
         if (!empty($validated['password'])) {
+            if (!Hash::check($validated['current_password'], $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect.',
+                    'errors' => ['current_password' => ['Current password is incorrect.']],
+                ], 422);
+            }
             $validated['password'] = Hash::make($validated['password']);
         } else {
             unset($validated['password']);
         }
+        unset($validated['current_password']);
 
         $user->update($validated);
 
@@ -568,8 +624,10 @@ class DonorController extends Controller
             ->where('status', 'verified')
             ->findOrFail($id);
 
+        // Drafts are the foundation's unpublished work, not for donors
         $campaigns = Campaign::with('photos')
             ->where('foundation_id', $f->id)
+            ->where('status', '!=', 'draft')
             ->latest()
             ->get();
 
@@ -661,11 +719,13 @@ class DonorController extends Controller
     /* ══════════════════════════════
        HELPERS
     ══════════════════════════════ */
-    private function resolveNotificationLink(Notification $n): ?string
+    private function resolveNotificationLink(Notification $n, $updateFoundationIds): ?string
     {
         return match ($n->type) {
-            'new_campaign' => '/donor/campaigns?tab=new&highlight=' . $n->notifiable_id,
-            'campaign_update' => '/donor/updates?highlight=' . $n->notifiable_id,
+            'new_campaign', 'campaign_promotion' => '/donor/campaigns?tab=new&highlight=' . $n->notifiable_id,
+            'campaign_update' => isset($updateFoundationIds[$n->notifiable_id])
+                ? '/donor/foundations/' . $updateFoundationIds[$n->notifiable_id]
+                : null,
             'donation_received', 'donation_cancelled' => '/donor/donations?highlight=' . $n->notifiable_id,
             default => null,
         };
@@ -691,6 +751,15 @@ class DonorController extends Controller
             'percent' => $c->goal_amount > 0
                 ? min(round(($c->current_amount / $c->goal_amount) * 100), 100)
                 : 0,
+            // Running in-app promotion: "Promoted" label, the message, and the
+            // urgency / social-proof lines ("5 days left", "12 donated this week")
+            'promotion' => $c->activePromotion ? [
+                'type' => $c->activePromotion->type ?? 'urgent',
+                'message' => $c->activePromotion->message,
+                'ends_at' => $c->activePromotion->ends_at->toIso8601String(),
+                'days_left' => $c->daysLeft(),
+                'donated_this_week' => $c->donorsThisWeek(),
+            ] : null,
             'foundation' => [
                 'id' => $c->foundation->id,
                 'name' => $c->foundation->name,

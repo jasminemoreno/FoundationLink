@@ -9,6 +9,7 @@ use App\Models\Foundation;
 use App\Models\Notification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DonationController extends Controller
 {
@@ -117,7 +118,20 @@ class DonationController extends Controller
             $q->where('foundation_id', $foundation->id);
         })->with('campaign')->findOrFail($id);
 
-        $donation->update(['status' => $request->status]);
+        $wasReceived = $donation->status === 'received';
+        $isReceived = $request->status === 'received';
+
+        DB::transaction(function () use ($donation, $request, $wasReceived, $isReceived) {
+            $donation->update(['status' => $request->status]);
+
+            // campaigns.current_amount counts only confirmed money, so move it
+            // exactly when a monetary donation enters or leaves 'received'.
+            if ($donation->type === 'monetary' && $wasReceived !== $isReceived) {
+                $isReceived
+                    ? $donation->campaign->increment('current_amount', $donation->amount)
+                    : $donation->campaign->decrement('current_amount', $donation->amount);
+            }
+        });
 
         // Notify the donor when their donation is received or cancelled
         if (in_array($request->status, ['received', 'cancelled'])) {
@@ -158,8 +172,9 @@ class DonationController extends Controller
             ->groupBy('donor_id')
             ->map(function ($donations) {
                 $donor = $donations->first()->donor;
-                $monetary = $donations->where('type', 'monetary');
-                $items = $donations->where('type', 'item');
+                $received = $donations->where('status', 'received');
+                $monetary = $received->where('type', 'monetary');
+                $items = $received->where('type', 'item');
 
                 return [
                     'id' => $donor->id,
@@ -214,6 +229,10 @@ class DonationController extends Controller
 
         $campaigns = Campaign::where('foundation_id', $foundation->id)->get();
 
+        // Raised / items / donor totals count only what the foundation confirmed;
+        // pending and cancelled donations are not money or goods actually received.
+        $received = $donations->where('status', 'received');
+
         // Monthly breakdown (last 6 months)
         $monthly = [];
         for ($i = 5; $i >= 0; $i--) {
@@ -221,7 +240,7 @@ class DonationController extends Controller
             $label = $month->format('M Y');
             $monthKey = $month->format('Y-m');
 
-            $monthDonations = $donations->filter(
+            $monthDonations = $received->filter(
                 fn($d) => Carbon::parse($d->created_at)->format('Y-m') === $monthKey
             );
 
@@ -234,8 +253,8 @@ class DonationController extends Controller
         }
 
         // Per-campaign breakdown
-        $perCampaign = $campaigns->map(function ($c) use ($donations) {
-            $cd = $donations->where('campaign_id', $c->id);
+        $perCampaign = $campaigns->map(function ($c) use ($received) {
+            $cd = $received->where('campaign_id', $c->id);
 
             return [
                 'id' => $c->id,
@@ -254,9 +273,9 @@ class DonationController extends Controller
 
         return response()->json([
             'summary' => [
-                'total_raised' => $donations->where('type', 'monetary')->sum('amount'),
-                'total_items' => $donations->where('type', 'item')->count(),
-                'total_donors' => $donations->pluck('donor_id')->unique()->count(),
+                'total_raised' => $received->where('type', 'monetary')->sum('amount'),
+                'total_items' => $received->where('type', 'item')->count(),
+                'total_donors' => $received->pluck('donor_id')->unique()->count(),
                 'total_donations' => $donations->count(),
                 'total_campaigns' => $campaigns->count(),
                 'active_campaigns' => $campaigns->where('status', 'active')->count(),
@@ -286,10 +305,12 @@ class DonationController extends Controller
             $q->where('foundation_id', $foundation->id);
         })->get();
 
+        $received = $donations->where('status', 'received');
+
         return response()->json([
-            'total_monetary' => $donations->where('type', 'monetary')->sum('amount'),
-            'total_items' => $donations->where('type', 'item')->count(),
-            'total_donors' => $donations->pluck('donor_id')->unique()->count(),
+            'total_monetary' => $received->where('type', 'monetary')->sum('amount'),
+            'total_items' => $received->where('type', 'item')->count(),
+            'total_donors' => $received->pluck('donor_id')->unique()->count(),
             'pending' => $donations->where('status', 'pending')->count(),
         ]);
     }

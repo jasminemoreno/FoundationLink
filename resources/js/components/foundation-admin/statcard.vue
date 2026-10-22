@@ -17,8 +17,8 @@
     icon:     { type: String, default: '' },
     value:    { type: [String, Number], required: true },
     label:    { type: String, required: true },
-    bg:       { type: String, default: '#eff6ff' },
-    col:      { type: String, default: '#3b82f6' },
+    bg:       { type: String, default: '#e8f0fe' },
+    col:      { type: String, default: '#2563eb' },
     iconSize: { type: Number, default: 42 },
   })
   </script>
@@ -31,7 +31,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    box-shadow: 0 1px 4px rgba(15,45,82,0.06);
+    box-shadow: 0 1px 4px rgba(30,58,138,0.06);
   }
   .fa-stat-icon {
     border-radius: 12px;
@@ -40,6 +40,6 @@
     justify-content: center;
     flex-shrink: 0;
   }
-  .fa-stat-val   { font-size: 1.2rem; font-weight: 800; color: #0F2D52; }
-  .fa-stat-label { font-size: 0.78rem; color: #94a3b8; margin-top: 2px; }
+  .fa-stat-val   { font-size: 1.2rem; font-weight: 800; color: var(--fa-heading); }
+  .fa-stat-label { font-size: 0.78rem; color: var(--fa-muted); margin-top: 2px; }
   </style>

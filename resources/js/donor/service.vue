@@ -3,7 +3,7 @@
 </template>
 
 <script setup>
-import LegalDocPage from '../components/donor/legaldocpage.vue'
+import LegalDocPage from '../components/donor/Legaldocpage.vue'
 
 const sections = [
   {

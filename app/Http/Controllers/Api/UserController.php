@@ -20,6 +20,7 @@ class UserController extends Controller
                     'email' => $u->email,
                     'role' => $u->role,
                     'status' => $u->status ?? 'active',
+                    'suspension_reason' => $u->suspension_reason,
                     'phone' => $u->phone,
                     'joined' => $u->created_at->format('M d, Y'),
                     'created_at' => $u->created_at,
@@ -36,12 +37,36 @@ class UserController extends Controller
 
     public function updateStatus(Request $request, $id)
     {
-        $request->validate([
-            'status' => 'required|in:active,inactive,suspended'
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive,suspended',
+            // A reason is required whenever the account is being suspended.
+            'suspension_reason' => 'required_if:status,suspended|nullable|string|min:5|max:500',
+        ], [
+            'suspension_reason.required_if' => 'Please enter a reason for the suspension.',
+            'suspension_reason.min' => 'The reason must be at least 5 characters.',
         ]);
 
         $user = User::findOrFail($id);
-        $user->update(['status' => $request->status]);
+
+        // Superadmin accounts (including your own) cannot be suspended.
+        if ($user->role === 'superadmin') {
+            return response()->json([
+                'message' => 'Superadmin accounts cannot be suspended.'
+            ], 403);
+        }
+
+        // Assigned directly (not mass-assigned), so this works even if
+        // 'suspension_reason' is not listed in the User model's $fillable.
+        $user->status = $validated['status'];
+        $user->suspension_reason = $validated['status'] === 'suspended'
+            ? trim($validated['suspension_reason'])
+            : null;
+        $user->save();
+
+        // End any open sessions right away so a suspended user is signed out.
+        if ($validated['status'] !== 'active') {
+            $user->tokens()->delete();
+        }
 
         return response()->json(['message' => 'Status updated', 'user' => $user]);
     }

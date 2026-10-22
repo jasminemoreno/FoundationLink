@@ -87,6 +87,22 @@
         <input v-model="newCat.color" type="color" />
       </div>
 
+      <div class="form-group">
+        <label>Icon</label>
+        <div class="icon-field">
+          <div class="icon-preview" :style="{ background: (newCat.color || '#0F2D52') + '22' }">{{ newCat.icon || newAutoIcon }}</div>
+          <div class="icon-hint">
+            <strong>{{ newCat.icon ? 'Chosen icon' : 'Automatic' }}</strong>
+            <span>{{ newCat.icon ? 'Click “Auto” to let the name decide again.' : 'Picked from the category name as you type.' }}</span>
+          </div>
+        </div>
+        <div class="icon-grid" role="radiogroup" aria-label="Icon">
+          <button type="button" class="icon-opt icon-auto" :class="{ on: !newCat.icon }" role="radio" :aria-checked="!newCat.icon" @click="newCat.icon = ''">Auto</button>
+          <button v-for="ic in iconChoices" :key="ic" type="button" class="icon-opt" :class="{ on: newCat.icon === ic }"
+                  role="radio" :aria-checked="newCat.icon === ic" :aria-label="'Use icon ' + ic" @click="newCat.icon = ic">{{ ic }}</button>
+        </div>
+      </div>
+
       <p v-if="addError" class="error-text">{{ addError }}</p>
 
       <template #footer>
@@ -120,6 +136,22 @@
       </div>
 
       <div class="form-group">
+        <label>Icon</label>
+        <div class="icon-field">
+          <div class="icon-preview" :style="{ background: (editCat.color || '#0F2D52') + '22' }">{{ editCat.icon || editAutoIcon }}</div>
+          <div class="icon-hint">
+            <strong>{{ editCat.icon ? 'Chosen icon' : 'Automatic' }}</strong>
+            <span>{{ editCat.icon ? 'Click “Auto” to let the name decide again.' : 'Picked from the category name as you type.' }}</span>
+          </div>
+        </div>
+        <div class="icon-grid" role="radiogroup" aria-label="Icon">
+          <button type="button" class="icon-opt icon-auto" :class="{ on: !editCat.icon }" role="radio" :aria-checked="!editCat.icon" @click="editCat.icon = ''">Auto</button>
+          <button v-for="ic in iconChoices" :key="ic" type="button" class="icon-opt" :class="{ on: editCat.icon === ic }"
+                  role="radio" :aria-checked="editCat.icon === ic" :aria-label="'Use icon ' + ic" @click="editCat.icon = ic">{{ ic }}</button>
+        </div>
+      </div>
+
+      <div class="form-group">
         <label>Status</label>
         <select v-model="editCat.is_active" class="select-input">
           <option :value="true">Active</option>
@@ -142,23 +174,46 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import api from '@/services/api'
 import PageHeader from '../components/superadmin/pageheader.vue'
 import EmptyState from '../components/superadmin/emptystate.vue'
 import BaseModal from '../components/superadmin/basemodal.vue'
-import Spinner from '../components/superadmin/Spinner.vue'
+import Spinner from '../components/superadmin/spinner.vue'
 
 const categories = ref([])
+
+/* ── ICONS ──
+   "Auto" asks the server which icon fits the name (English or Filipino), shown
+   live while typing; or the super admin picks one from the grid. */
+const iconChoices  = ref([])
+const newAutoIcon  = ref('🤝')
+const editAutoIcon = ref('🤝')
+
+async function suggestIcon(name) {
+  const res = await api.get('/admin/categories/suggest-icon', { params: { name } })
+  if (!iconChoices.value.length) iconChoices.value = res.data.choices || []
+  return res.data.icon || '🤝'
+}
+
+// Wait until typing pauses before asking, instead of on every key press
+function debounce(fn, ms) {
+  let t
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms) }
+}
+const refreshNewAuto  = debounce(async name => { newAutoIcon.value  = await suggestIcon(name) }, 250)
+const refreshEditAuto = debounce(async name => { editAutoIcon.value = await suggestIcon(name) }, 250)
 
 /* ── ADD ── */
 const showAddModal = ref(false)
 const addLoading   = ref(false)
 const addError     = ref('')
-const newCat = ref({ name: '', description: '', color: '#0F2D52' })
+// icon '' = automatic (picked from the name by the server)
+const newCat = ref({ name: '', description: '', color: '#0F2D52', icon: '' })
 
 function openAddModal() {
-  newCat.value = { name: '', description: '', color: '#0F2D52' }
+  newCat.value = { name: '', description: '', color: '#0F2D52', icon: '' }
+  newAutoIcon.value = '🤝'
   addError.value = ''
   showAddModal.value = true
 }
@@ -169,16 +224,23 @@ const editLoading   = ref(false)
 const editError     = ref('')
 const editCat = ref({ id: null, name: '', description: '', color: '#0F2D52', is_active: true })
 
-function openEditModal(cat) {
+async function openEditModal(cat) {
   editCat.value = {
     id:          cat.id,
     name:        cat.name,
     description: cat.description || '',
     color:       cat.color || '#0F2D52',
-    is_active:   cat.is_active ?? true
+    is_active:   cat.is_active ?? true,
+    icon:        cat.icon || '',
   }
   editError.value = ''
   showEditModal.value = true
+  // If the current icon is just what the name would give (or the old folder),
+  // show it as "Auto" so renaming keeps it in step with the name
+  editAutoIcon.value = await suggestIcon(cat.name)
+  if (!cat.icon || cat.icon === editAutoIcon.value || cat.icon === '📁' || cat.icon === '🤝') {
+    editCat.value.icon = ''
+  }
 }
 
 /* ── FETCH ── */
@@ -194,7 +256,14 @@ async function fetchCategories() {
   }
 }
 
-onMounted(fetchCategories)
+// Live "Auto" icon preview as the name is typed
+watch(() => newCat.value.name, name => refreshNewAuto(name))
+watch(() => editCat.value.name, name => { if (showEditModal.value) refreshEditAuto(name) })
+
+onMounted(() => {
+  fetchCategories()
+  suggestIcon('').catch(() => {}) // loads the icon choices for the pop-ups
+})
 
 /* ── ADD CATEGORY ── */
 async function addCategory() {
@@ -231,7 +300,9 @@ async function saveEdit() {
       name:        editCat.value.name,
       description: editCat.value.description,
       color:       editCat.value.color,
-      is_active:   editCat.value.is_active
+      is_active:   editCat.value.is_active,
+      // "Auto" saves the icon the name gives; otherwise the chosen one
+      icon:        editCat.value.icon || editAutoIcon.value,
     })
 
     const updated = res.data?.category || res.data
@@ -319,6 +390,18 @@ function formatMoney(val) {
 .select-input:focus { border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.12); }
 .form-group textarea       { height: 80px; resize: none; }
 .form-group input[type="color"] { height: 44px; cursor: pointer; padding: 4px 8px; }
+
+/* Icon picker */
+.icon-field { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.icon-preview { width: 52px; height: 52px; flex-shrink: 0; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; }
+.icon-hint { display: flex; flex-direction: column; gap: 2px; font-size: 0.8rem; color: #475569; }
+.icon-hint strong { color: #0F2D52; font-size: 0.85rem; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 6px; max-height: 132px; overflow-y: auto; padding: 2px; }
+.icon-opt { height: 38px; border: 1.5px solid #e2e8f0; border-radius: 10px; background: white; font-size: 1.15rem; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.icon-opt:hover { border-color: #94a3b8; }
+.icon-opt.on { border-color: #0F2D52; background: #eef2f8; }
+.icon-opt:focus-visible { outline: 2px solid #0F2D52; outline-offset: 1px; }
+.icon-auto { grid-column: span 2; font-size: 0.78rem; font-weight: 700; color: #0F2D52; }
 .select-input { appearance: none; cursor: pointer; }
 
 .error-text { font-size: 0.82rem; font-weight: 600; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 4px; }

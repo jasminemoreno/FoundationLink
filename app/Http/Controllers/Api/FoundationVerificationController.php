@@ -9,13 +9,13 @@ use App\Models\FoundationDocument;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\FoundationVerificationSubmitted;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class FoundationVerificationController extends Controller
 {
     public function store(Request $request)
     {
         $request->validate([
-            'foundation_id' => 'required|exists:foundations,id',
             'admin_id_type' => 'required|string',
             'doc_type' => 'required|string',
 
@@ -27,7 +27,17 @@ class FoundationVerificationController extends Controller
         ]);
 
 
-        $foundation = Foundation::findOrFail($request->foundation_id);
+        // Only the signed-in admin's own foundation, and only during first sign-up.
+        // Verified / suspended / under-review foundations can't be pushed back into
+        // review from here; rejected ones use /foundation/resubmit instead.
+        $foundation = Foundation::where('user_id', auth()->id())->firstOrFail();
+
+        if (!in_array($foundation->status, ['pending_verification', 'incomplete'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification documents have already been submitted for this foundation.'
+            ], 422);
+        }
 
         // Update foundation status
         $foundation->status = 'under_review';
@@ -80,9 +90,22 @@ class FoundationVerificationController extends Controller
          */
         $superAdmin = User::where('role', 'superadmin')->first();
 
+        // Documents are already saved; if this mail failed the sign-up would show an
+        // error, and retrying would then be refused as "already submitted".
         if ($superAdmin && $superAdmin->email) {
-            Mail::to($superAdmin->email)
-                ->send(new FoundationVerificationSubmitted($foundation));
+            try {
+                Mail::to($superAdmin->email)
+                    ->send(new FoundationVerificationSubmitted($foundation));
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        // Sign-up is finished: retire the temporary registration token.
+        // A normal login token is left alone.
+        $token = $request->user()->currentAccessToken();
+        if ($token instanceof PersonalAccessToken && $token->name === AuthController::REGISTRATION_TOKEN_NAME) {
+            $token->delete();
         }
 
         return response()->json([

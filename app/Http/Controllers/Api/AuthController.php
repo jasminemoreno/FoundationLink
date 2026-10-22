@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Phone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -16,6 +19,15 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /** Address shown to suspended users who need to ask for reactivation. */
+    private const SUPPORT_EMAIL = 'jmoreno4@ssct.edu.ph';
+
+    /** Name of the temporary token used during foundation sign-up. */
+    public const REGISTRATION_TOKEN_NAME = 'foundation_registration';
+
+    /** Wrong OTP guesses allowed before the code is thrown away. */
+    private const MAX_OTP_ATTEMPTS = 5;
+
     /**
      * Login
      */
@@ -25,6 +37,44 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required']
         ]);
+
+        // Refuse suspended / inactive accounts with a clear reason. This runs only
+        // after the password is confirmed, so the message never reveals which
+        // emails are registered to someone who does not know the password.
+        $account = User::withoutGlobalScopes()
+            ->where('email', $credentials['email'])
+            ->first();
+
+        if (
+            $account
+            && Hash::check($credentials['password'], $account->password)
+            && in_array($account->status, ['suspended', 'inactive'], true)
+        ) {
+            $isSuspended = $account->status === 'suspended';
+
+            if ($isSuspended) {
+                $message = 'Your account has been suspended.';
+
+                if (!empty($account->suspension_reason)) {
+                    $message .= ' Reason: ' . rtrim(trim($account->suspension_reason), '.') . '.';
+                }
+
+                $message .= ' To ask for reactivation, email ' . self::SUPPORT_EMAIL . '.';
+            } else {
+                $message = 'Your account is not active. Please contact ' . self::SUPPORT_EMAIL . '.';
+            }
+
+            // Structured response: the web login page reads `code`, `reason` and
+            // `support_email` to show a popup. `message` and `errors.email` are kept
+            // so any screen that only reads the plain message (e.g. mobile) still works.
+            return response()->json([
+                'message' => $message,
+                'errors' => ['email' => [$message]],
+                'code' => $isSuspended ? 'account_suspended' : 'account_inactive',
+                'reason' => $isSuspended ? $account->suspension_reason : null,
+                'support_email' => self::SUPPORT_EMAIL,
+            ], 403);
+        }
 
         if (!Auth::attempt($credentials)) {
             throw ValidationException::withMessages([
@@ -44,28 +94,6 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Normalize a PH phone number to +639XXXXXXXXX format.
-     * Accepts 09XXXXXXXXX or +639XXXXXXXXX (spaces/dashes/parens stripped).
-     * Returns null if the input doesn't match either format, or is empty.
-     */
-    private function normalizePhone(?string $input): ?string
-    {
-        if (!$input)
-            return null;
-
-        $cleaned = preg_replace('/[\s\-()]/', '', $input);
-
-        if (preg_match('/^09\d{9}$/', $cleaned)) {
-            return '+63' . substr($cleaned, 1);
-        }
-
-        if (preg_match('/^\+639\d{9}$/', $cleaned)) {
-            return $cleaned;
-        }
-
-        return null;
-    }
 
     /**
      * Register Donor
@@ -75,7 +103,7 @@ class AuthController extends Controller
         // Normalize phone BEFORE validation so the regex/unique checks
         // run against the final +63 format, not whatever format the user typed.
         $request->merge([
-            'phone' => $this->normalizePhone($request->input('phone')),
+            'phone' => Phone::normalize($request->input('phone')),
         ]);
 
         $validated = $request->validate([
@@ -129,7 +157,7 @@ class AuthController extends Controller
     public function registerFoundation(Request $request)
     {
         $request->merge([
-            'phone' => $this->normalizePhone($request->input('phone')),
+            'phone' => Phone::normalize($request->input('phone')),
         ]);
 
         $validated = $request->validate([
@@ -165,10 +193,20 @@ class AuthController extends Controller
             'status' => 'active'
         ]);
 
+        // Short-lived token for the next two sign-up steps (create foundation,
+        // upload documents) so those endpoints know who is calling without
+        // trusting an id sent from the browser. Deleted once documents are submitted.
+        $registrationToken = $user->createToken(
+            self::REGISTRATION_TOKEN_NAME,
+            ['*'],
+            now()->addHours(2)
+        )->plainTextToken;
+
         return response()->json([
             'success' => true,
             'message' => 'Foundation admin registered successfully.',
-            'user' => $user
+            'user' => $user,
+            'registration_token' => $registrationToken,
         ]);
     }
 
@@ -204,11 +242,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
+        // Same answer whether or not the email is registered, so this form
+        // can't be used to find out who has an account.
+        $genericResponse = response()->json([
+            'success' => true,
+            'message' => 'If an account exists for that email, a verification code has been sent.'
+        ]);
+
         if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'We could not find an account with that email address.'
-            ], 422);
+            return $genericResponse;
         }
 
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -247,10 +289,7 @@ class AuthController extends Controller
             }
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'A verification code has been sent to your email.'
-        ]);
+        return $genericResponse;
     }
 
     /**
@@ -274,7 +313,9 @@ class AuthController extends Controller
             ], 422);
         }
 
-        if (now()->diffInMinutes($record->created_at) > 10) {
+        // Compare against an explicit deadline: in Carbon 3, now()->diffInMinutes($past)
+        // is negative, so a "> 10" check on it never fires.
+        if (Carbon::parse($record->created_at)->addMinutes(10)->isPast()) {
             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
 
             return response()->json([
@@ -284,11 +325,30 @@ class AuthController extends Controller
         }
 
         if (!Hash::check($request->otp, $record->token)) {
+            // Count wrong guesses per email so the 6-digit code can't be brute-forced
+            // from many IPs; after too many misses the code is thrown away.
+            $attemptsKey = 'otp_attempts:' . strtolower($request->email);
+            // add() first: the database cache store's increment() returns false for a missing key.
+            Cache::add($attemptsKey, 0, now()->addMinutes(10));
+            $attempts = (int) Cache::increment($attemptsKey);
+
+            if ($attempts >= self::MAX_OTP_ATTEMPTS) {
+                DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+                Cache::forget($attemptsKey);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Too many incorrect attempts. Please request a new code.'
+                ], 422);
+            }
+
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid verification code.'
             ], 422);
         }
+
+        Cache::forget('otp_attempts:' . strtolower($request->email));
 
         // OTP confirmed — issue a short-lived reset token for the final step
         $resetToken = Str::random(60);
@@ -316,7 +376,16 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email',
             'reset_token' => 'required',
-            'password' => 'required|min:8|confirmed',
+            // Same rules as sign-up
+            'password' => [
+                'required',
+                'confirmed',
+                'min:12',
+                'regex:/^(?=.*\d)(?=.*[^a-zA-Z0-9]).{12,}$/',
+            ],
+        ], [
+            'password.min' => 'Password must be at least 12 characters.',
+            'password.regex' => 'Password must include at least 1 number and 1 special character.',
         ]);
 
         $record = DB::table('password_reset_tokens')
@@ -324,7 +393,7 @@ class AuthController extends Controller
             ->first();
 
         $valid = $record
-            && now()->diffInMinutes($record->created_at) <= 15
+            && Carbon::parse($record->created_at)->addMinutes(15)->isFuture()
             && Hash::check($request->reset_token, $record->token);
 
         if (!$valid) {

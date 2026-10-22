@@ -1,9 +1,32 @@
 <template>
   <div class="dashboard">
 
-    <!-- PENDING VERIFICATION BANNER -->
+    <!-- Until the foundation's status is known, don't show any version of the page
+         (otherwise the wrong screen flashes before the right one appears) -->
+    <div v-if="!statusLoaded" class="status-banner">
+      <EmptyState loading compact />
+    </div>
+
+    <!-- UNFINISHED SIGN-UP BANNER (stopped before adding the foundation or uploading documents) -->
+    <div v-else-if="setupStep" class="status-banner">
+      <div class="banner-icon">📝</div>
+      <h2>Please finish your registration</h2>
+      <p v-if="setupStep === 'create_foundation'">
+        Your account is ready, but you haven't added your foundation's details yet.
+        Add them, then upload your documents so the super administrator can review your foundation.
+      </p>
+      <p v-else>
+        Your foundation's details are saved, but you haven't uploaded your verification documents yet.
+        The super administrator can only review your foundation once they are uploaded.
+      </p>
+      <router-link class="resubmit-btn" :to="setupPage">
+        {{ setupStep === 'create_foundation' ? 'Add your foundation' : 'Upload your documents' }}
+      </router-link>
+    </div>
+
+    <!-- PENDING VERIFICATION BANNER (documents sent, waiting for the super admin) -->
     <div
-      v-if="foundationStatus === 'pending_verification' || foundationStatus === 'under_review'"
+      v-else-if="foundationStatus === 'under_review'"
       class="status-banner"
     >
       <div class="banner-icon">⏳</div>
@@ -84,50 +107,52 @@
               icon="🎁" message="No donations yet." compact
             />
 
-            <table v-else class="donations-table">
-              <thead>
-                <tr>
-                  <th>Donor</th>
-                  <th>Campaign</th>
-                  <th>Type</th>
-                  <th>Details</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="d in recentDonations" :key="d.id">
-                  <td>
-                    <div class="donor-cell">
-                      <AvatarInitials :initials="d.donor.initials" :seed="d.donor.id" :size="30" />
-                      <div>
-                        <strong>{{ d.donor.name }}</strong>
-                        <small>{{ d.donor.email }}</small>
+            <div v-else class="table-scroll">
+              <table class="donations-table">
+                <thead>
+                  <tr>
+                    <th>Donor</th>
+                    <th>Campaign</th>
+                    <th>Type</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="d in recentDonations" :key="d.id">
+                    <td>
+                      <div class="donor-cell">
+                        <AvatarInitials :initials="d.donor.initials" :seed="d.donor.id" :size="30" />
+                        <div>
+                          <strong>{{ d.donor.name }}</strong>
+                          <small>{{ d.donor.email }}</small>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td class="campaign-name">{{ d.campaign.title }}</td>
-                  <td>
-                    <Badge
-                      :label="d.type === 'monetary' ? 'Monetary' : 'Item'"
-                      :tone="d.type === 'monetary' ? 'success' : 'info'"
-                    />
-                  </td>
-                  <td>
-                    <span v-if="d.type === 'monetary'" class="amount">
-                      ₱{{ formatMoney(d.amount) }}
-                    </span>
-                    <span v-else class="item-info">
-                      {{ d.item_name }} x{{ d.item_quantity }}
-                    </span>
-                  </td>
-                  <td>
-                    <Badge :label="statusLabel(d.status)" :tone="toneForDonationStatus(d.status)" />
-                  </td>
-                  <td class="date-col">{{ formatDate(d.donated_at) }}</td>
-                </tr>
-              </tbody>
-            </table>
+                    </td>
+                    <td class="campaign-name">{{ d.campaign.title }}</td>
+                    <td>
+                      <Badge
+                        :label="d.type === 'monetary' ? 'Monetary' : 'Item'"
+                        :tone="d.type === 'monetary' ? 'success' : 'info'"
+                      />
+                    </td>
+                    <td>
+                      <span v-if="d.type === 'monetary'" class="amount">
+                        ₱{{ formatMoney(d.amount) }}
+                      </span>
+                      <span v-else class="item-info">
+                        {{ d.item_name }} x{{ d.item_quantity }}
+                      </span>
+                    </td>
+                    <td>
+                      <Badge :label="statusLabel(d.status)" :tone="toneForDonationStatus(d.status)" />
+                    </td>
+                    <td class="date-col">{{ formatDate(d.donated_at) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -201,13 +226,33 @@
       </div>
 
     </div>
+
+    <!-- ASK ONCE PER LOGIN: finish the unfinished sign-up now? -->
+    <FoundationModal
+      v-if="showSetupPrompt"
+      title="Finish your sign-up?"
+      width="440px"
+      @close="dismissSetupPrompt"
+    >
+      <p class="setup-prompt-text">
+        {{ setupStep === 'create_foundation'
+          ? "You haven't finished signing up yet. Would you like to add your foundation's details now?"
+          : "You haven't finished signing up yet. Would you like to upload your verification documents now?" }}
+      </p>
+      <template #footer>
+        <button class="btn-cancel" @click="dismissSetupPrompt">Cancel</button>
+        <button class="btn-save" @click="goFinishSetup">Yes</button>
+      </template>
+    </FoundationModal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from "vue"
+import { useRouter } from "vue-router"
 import api from "@/services/api"
-import FoundationResubmitForm from "@/components/foundation-admin/FoundationResubmitForm.vue"
+import FoundationModal from "../components/foundation-admin/basemodal.vue"
+import FoundationResubmitForm from "@/components/foundation-admin/Foundationresubmitform.vue"
 import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import AvatarInitials from "../components/foundation-admin/avatarinitials.vue"
@@ -215,7 +260,38 @@ import Badge from "../components/foundation-admin/badge.vue"
 
 const isLoading        = ref(false)
 const foundation       = ref(null)
-const foundationStatus = ref("pending_verification")
+// Filled from the server; null until loaded (and stays null if there is no foundation yet)
+const foundationStatus = ref(null)
+// 'create_foundation' / 'upload_documents' when sign-up was left unfinished, else null
+const setupStep        = ref(null)
+// True once /foundation/dashboard has answered (or failed), so the right screen shows first time
+const statusLoaded     = ref(false)
+
+/* ── UNFINISHED SIGN-UP PROMPT ── */
+const router          = useRouter()
+const showSetupPrompt = ref(false)
+// The page the admin stopped at
+const setupPage = computed(() =>
+  setupStep.value === 'create_foundation' ? '/foundation/create' : '/foundation/verification'
+)
+
+// Asked once per login: remember which login token already saw the question,
+// so Cancel isn't asked again on every visit to the dashboard, but a new login asks again.
+function promptAlreadyShown() {
+  return sessionStorage.getItem('setup_prompt_seen') === sessionStorage.getItem('token')
+}
+function markPromptShown() {
+  sessionStorage.setItem('setup_prompt_seen', sessionStorage.getItem('token') || '')
+}
+function dismissSetupPrompt() {
+  markPromptShown()
+  showSetupPrompt.value = false
+}
+function goFinishSetup() {
+  markPromptShown()
+  showSetupPrompt.value = false
+  router.push(setupPage.value)
+}
 const recentDonations  = ref([])
 const campaigns        = ref([])
 const showResubmitForm = ref(false)
@@ -231,7 +307,17 @@ const donationStats    = ref({
 async function loadDashboard() {
   isLoading.value = true
   try {
-    const res1 = await api.get("/foundation/dashboard")
+    let res1
+    try {
+      res1 = await api.get("/foundation/dashboard")
+    } finally {
+      // Status is known (or failed): stop showing the loading placeholder either way
+      statusLoaded.value = true
+    }
+    setupStep.value = res1.data.setup_step ?? null
+    if (setupStep.value && !promptAlreadyShown()) {
+      showSetupPrompt.value = true
+    }
     if (res1.data.foundation) {
       foundation.value       = res1.data.foundation
       foundationStatus.value = res1.data.foundation.status
@@ -291,31 +377,31 @@ const stats = computed(() => [
   {
     label: "Total Campaigns",
     value: campaigns.value.length,
-    bg: "#eff6ff", col: "#3b82f6",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
+    bg: "#e8f0fe", col: "#2563eb",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
   },
   {
     label: "Total Raised",
     value: "₱" + formatMoney(donationStats.value.total_monetary),
-    bg: "#f0fdf4", col: "#059669",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+    bg: "#ecfdf5", col: "#047857",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`
   },
   {
     label: "Item Donations",
     value: donationStats.value.total_items,
-    bg: "#fefce8", col: "#ca8a04",
-    icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`
+    bg: "#fef3c7", col: "#b45309",
+    icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`
   },
   {
     label: "Total Donors",
     value: donationStats.value.total_donors,
-    bg: "#f5f3ff", col: "#7c3aed",
+    bg: "#ede9fe", col: "#6d28d9",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
   },
   {
     label: "Followers",
     value: followersCount.value,
-    bg: "#fdf2f8", col: "#db2777",
+    bg: "#fce7f3", col: "#be185d",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`
   },
 ])
@@ -331,9 +417,9 @@ function formatDate(d) {
 }
 
 function progressColor(pct) {
-  if (pct >= 80) return "#059669"
-  if (pct >= 50) return "#0F2D52"
-  return "#3b82f6"
+  if (pct >= 80) return "#047857"
+  if (pct >= 50) return "#2563eb"
+  return "#2563eb"
 }
 
 function statusLabel(s) {
@@ -369,19 +455,26 @@ function toneForDonationStatus(s) {
 .status-banner.rejected { background: linear-gradient(135deg, #fff5f5, #fee2e2); border-color: #fca5a5; }
 .banner-icon { font-size: 2.5rem; margin-bottom: 12px; }
 .status-banner h2 { margin: 0 0 10px; font-size: 1.2rem; font-weight: 800; color: #b7791f; }
-.status-banner.rejected h2 { color: #dc2626; }
+.status-banner.rejected h2 { color: var(--fa-danger); }
 .status-banner p { margin: 0; font-size: 0.88rem; color: #7a5a1b; line-height: 1.7; max-width: 560px; margin: 0 auto; }
 .status-banner.rejected p { color: #991b1b; }
 
-.resubmit-btn { margin-top: 18px; padding: 11px 26px; background: #0F2D52; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: background 0.2s; }
-.resubmit-btn:hover { background: #1565c0; }
+.resubmit-btn { margin-top: 18px; padding: 11px 26px; background: var(--fa-primary); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: background 0.2s; }
+.resubmit-btn:hover { background: var(--fa-primary); }
+a.resubmit-btn { display: inline-block; text-decoration: none; }
+
+/* UNFINISHED SIGN-UP PROMPT (same button look as the other foundation pop-ups) */
+.setup-prompt-text { margin: 0; color: var(--fa-text-2); font-size: 0.92rem; line-height: 1.6; }
+.btn-cancel { padding: 9px 18px; border: 1px solid var(--fa-border); background: white; color: var(--fa-muted); border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
+.btn-save   { padding: 9px 20px; border: none; background: var(--fa-primary); color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; min-width: 100px; }
+.btn-save:hover { background: var(--fa-primary-hover); }
 
 /* FOUNDATION HEADER */
-.foundation-header { display: flex; justify-content: space-between; align-items: center; background: white; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(15,45,82,0.06); }
+.foundation-header { display: flex; justify-content: space-between; align-items: center; background: white; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(30,58,138,0.06); }
 .foundation-info   { display: flex; align-items: center; gap: 14px; }
-.foundation-name   { font-size: 1rem; font-weight: 700; color: #0F2D52; margin: 0 0 3px; }
-.foundation-cat    { font-size: 0.8rem; color: #94a3b8; margin: 0; }
-.verified-badge    { font-size: 0.8rem; font-weight: 700; background: #f0fdf4; color: #059669; padding: 6px 14px; border-radius: 20px; border: 1px solid #bbf7d0; }
+.foundation-name   { font-size: 1rem; font-weight: 700; color: var(--fa-heading); margin: 0 0 3px; }
+.foundation-cat    { font-size: 0.8rem; color: var(--fa-muted); margin: 0; }
+.verified-badge    { font-size: 0.8rem; font-weight: 700; background: #f0fdf4; color: var(--fa-success); padding: 6px 14px; border-radius: 20px; border: 1px solid #bbf7d0; }
 
 /* STAT CARDS */
 .stat-cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 16px; margin-bottom: 20px; }
@@ -391,45 +484,45 @@ function toneForDonationStatus(s) {
 .right-col { display: flex; flex-direction: column; }
 
 /* PANEL */
-.panel { background: white; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(15,45,82,0.06); overflow: hidden; }
+.panel { background: white; border-radius: 14px; border: 1px solid var(--fa-border); box-shadow: 0 1px 4px rgba(30,58,138,0.06); overflow: hidden; }
 .panel-head  { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid #f1f5f9; }
-.panel-title { font-size: 0.92rem; font-weight: 700; color: #0F2D52; margin: 0; }
-.panel-link  { font-size: 0.78rem; color: #3b82f6; text-decoration: none; font-weight: 500; }
+.panel-title { font-size: 0.92rem; font-weight: 700; color: var(--fa-heading); margin: 0; }
+.panel-link  { font-size: 0.78rem; color: var(--fa-primary); text-decoration: none; font-weight: 500; }
 .panel-link:hover { text-decoration: underline; }
 .panel-body  { padding: 16px 20px; }
 
 /* TABLE */
 .donations-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-.donations-table th { text-align: left; padding: 8px 10px; color: #94a3b8; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; }
-.donations-table td { padding: 10px; border-bottom: 1px solid #f8fafc; color: #475569; }
+.donations-table th { text-align: left; padding: 8px 10px; color: var(--fa-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; }
+.donations-table td { padding: 10px; border-bottom: 1px solid #f8fafc; color: var(--fa-text-2); }
 .donations-table tbody tr:last-child td { border-bottom: none; }
 .donations-table tbody tr:hover { background: #f8fafc; }
 
 .donor-cell   { display: flex; align-items: center; gap: 8px; }
-.donor-cell strong { display: block; color: #0F2D52; font-size: 0.82rem; font-weight: 600; }
-.donor-cell small  { color: #94a3b8; font-size: 0.7rem; }
-.campaign-name { font-size: 0.8rem; color: #0F2D52; font-weight: 500; max-width: 120px; }
-.date-col { font-size: 0.75rem; color: #94a3b8; white-space: nowrap; }
+.donor-cell strong { display: block; color: var(--fa-heading); font-size: 0.82rem; font-weight: 600; }
+.donor-cell small  { color: var(--fa-muted); font-size: 0.7rem; }
+.campaign-name { font-size: 0.8rem; color: var(--fa-heading); font-weight: 500; max-width: 120px; }
+.date-col { font-size: 0.75rem; color: var(--fa-muted); white-space: nowrap; }
 
-.amount    { font-weight: 700; color: #059669; }
-.item-info { font-size: 0.78rem; color: #0F2D52; }
+.amount    { font-weight: 700; color: var(--fa-success); }
+.item-info { font-size: 0.78rem; color: var(--fa-heading); }
 
 /* PROGRESS */
 .progress-list { display: flex; flex-direction: column; gap: 14px; }
 .progress-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-.progress-name { font-size: 0.82rem; font-weight: 500; color: #0F2D52; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
-.progress-pct  { font-size: 0.78rem; font-weight: 700; color: #0F2D52; flex-shrink: 0; }
-.progress-bar-bg   { height: 7px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.progress-name { font-size: 0.82rem; font-weight: 500; color: var(--fa-heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.progress-pct  { font-size: 0.78rem; font-weight: 700; color: var(--fa-heading); flex-shrink: 0; }
+.progress-bar-bg   { height: 7px; background: var(--fa-border); border-radius: 99px; overflow: hidden; }
 .progress-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
-.progress-foot { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.72rem; color: #0F2D52; font-weight: 600; }
-.muted { color: #94a3b8; font-weight: 400; }
+.progress-foot { display: flex; justify-content: space-between; margin-top: 4px; font-size: 0.72rem; color: var(--fa-heading); font-weight: 600; }
+.muted { color: var(--fa-muted); font-weight: 400; }
 
 /* INFO LIST */
 .info-list { padding: 8px 20px 16px; }
 .info-row  { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.83rem; }
 .info-row:last-child { border-bottom: none; }
-.info-label { color: #94a3b8; font-size: 0.78rem; font-weight: 500; }
-.pending-count { font-weight: 700; color: #ca8a04; background: #fefce8; padding: 2px 10px; border-radius: 20px; font-size: 0.78rem; }
+.info-label { color: var(--fa-muted); font-size: 0.78rem; font-weight: 500; }
+.pending-count { font-weight: 700; color: var(--fa-warning); background: #fefce8; padding: 2px 10px; border-radius: 20px; font-size: 0.78rem; }
 
 @media (max-width: 1100px) {
   .stat-cards { grid-template-columns: repeat(3,1fr); }
@@ -438,4 +531,8 @@ function toneForDonationStatus(s) {
   .stat-cards { grid-template-columns: repeat(2,1fr); }
   .lower-section { grid-template-columns: 1fr; }
 }
+
+/* Wide table: scrolls sideways inside its own box on small screens (never cut off) */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll .donations-table { min-width: 620px; }
 </style>

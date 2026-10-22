@@ -100,7 +100,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import EmptyState from '../components/donor/emptystate.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
 
 const search         = ref('')
 const activeCategory = ref('getting-started')

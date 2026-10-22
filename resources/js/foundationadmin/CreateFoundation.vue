@@ -137,8 +137,10 @@ async function fetchCategories() {
 
 /* ── GUARD + LOAD ── */
 onMounted(() => {
-  const adminId = sessionStorage.getItem('foundation_admin_id')
-  if (!adminId) {
+  // Open during first sign-up (registration token) or when a logged-in admin
+  // comes back from the dashboard to finish an unfinished sign-up (login token)
+  if (!sessionStorage.getItem('registration_token') && !sessionStorage.getItem('token')) {
+    sessionStorage.removeItem('foundation_admin_id')
     router.push('/foundation/register')
     return
   }
@@ -164,16 +166,17 @@ async function submitFoundation() {
   isLoading.value = true
 
   try {
-    const adminId = sessionStorage.getItem('foundation_admin_id')
+    const registrationToken = sessionStorage.getItem('registration_token')
 
-    if (!adminId) {
+    if (!registrationToken && !sessionStorage.getItem('token')) {
       errorMsg.value = 'Session expired. Please register again.'
       router.push('/foundation/register')
       return
     }
 
+    // The server identifies the owner from the token: the registration token
+    // during first sign-up, otherwise the login token api.js already attaches
     const response = await api.post('/foundations', {
-      user_id:     adminId,
       category_id: form.category_id || null,
       name:        form.name,
       description: form.description,
@@ -181,6 +184,8 @@ async function submitFoundation() {
       city_municipality: form.city,
       barangay:    form.barangay,
       street:      form.street
+    }, {
+      headers: registrationToken ? { Authorization: `Bearer ${registrationToken}` } : {}
     })
 
     const foundationId =
@@ -211,13 +216,13 @@ async function submitFoundation() {
   text-align: center;
   font-size: 1.4rem;
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--fa-text);
 }
 
 .form-subtitle {
   text-align: center;
   font-size: 0.85rem;
-  color: #777;
+  color: var(--fa-muted);
   margin-bottom: 1.5rem;
 }
 
@@ -245,7 +250,7 @@ label {
 }
 
 .field-input:focus {
-  border-color: #1565c0;
+  border-color: var(--fa-primary);
   box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.1);
 }
 
@@ -271,7 +276,7 @@ label {
 .error-text {
   font-size: 0.83rem;
   font-weight: 600;
-  color: #cc3333;
+  color: var(--fa-danger);
   background: #fff5f5;
   border: 1px solid #ffd0d0;
   border-radius: 8px;
@@ -283,7 +288,7 @@ label {
   width: 100%;
   padding: 14px;
   margin-top: 10px;
-  background: #0d47a1;
+  background: var(--fa-primary-hover);
   color: white;
   border: none;
   border-radius: 10px;
@@ -296,7 +301,7 @@ label {
   transition: background 0.2s;
 }
 
-.next-btn:hover:not(:disabled) { background: #1565c0; }
+.next-btn:hover:not(:disabled) { background: var(--fa-primary); }
 .next-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .spinner {

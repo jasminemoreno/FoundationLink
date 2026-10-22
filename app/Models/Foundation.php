@@ -51,6 +51,15 @@ class Foundation extends Model
         'verified_at',
     ];
 
+    /** Statuses of a foundation whose admin hasn't uploaded verification documents yet. */
+    public const UNFINISHED_SIGN_UP_STATUSES = ['pending_verification', 'incomplete'];
+
+    /** Sign-up is finished once the documents were sent (under review or later). */
+    public function isSignUpFinished(): bool
+    {
+        return !in_array($this->status, self::UNFINISHED_SIGN_UP_STATUSES, true);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

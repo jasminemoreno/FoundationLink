@@ -26,8 +26,9 @@ class FoundationEmailChangeVerification extends Mailable
     {
         // Base URL of the page that opens your Vue app (the same address you
         // type in the browser to see the login page). Set FRONTEND_URL in .env
-        // to change it without editing this file.
-        $base = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+        // to change it without editing this file. Read via config(), because
+        // env() returns null here once `php artisan config:cache` has been run.
+        $base = rtrim(config('app.frontend_url'), '/');
 
         $pageUrl = $base . '/verify-email-change/' . $this->token;
 

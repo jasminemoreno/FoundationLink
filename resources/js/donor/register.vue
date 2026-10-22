@@ -47,6 +47,12 @@
           </div>
         </div>
 
+        <!-- Shown when the form was filled in from a saved draft -->
+        <div v-if="restoredDraft && step === 1" class="draft-note">
+          <span>We filled in what you typed last time. Please type your password again on the next step.</span>
+          <button type="button" class="draft-reset" @click="startOver">Start over</button>
+        </div>
+
         <!-- STEP 1: PERSONAL INFO -->
         <div v-if="step === 1" class="step-form">
           <div class="input-row">
@@ -321,7 +327,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import LegalModal from '../components/donor/legalmodal.vue'
@@ -424,6 +430,60 @@ const form = reactive({
   password_confirmation: '',
 })
 
+/* ── REMEMBER WHAT WAS TYPED ──
+   If the donor refreshes or presses Back by accident, the form is filled in
+   again. Kept in sessionStorage, i.e. only in this one browser tab, so on a
+   shared computer the next person (new tab / window / browser) gets an empty
+   form — localStorage was shared by everyone using the browser and showed one
+   donor's details to the next. Passwords are never saved. The draft is erased
+   after 30 minutes untouched, when the account is created, or on "Start over". */
+const DRAFT_KEY       = 'donor_signup_draft'
+const DRAFT_MAX_AGE   = 30 * 60 * 1000
+const DRAFT_FIELDS    = ['first_name', 'last_name', 'phone', 'gender', 'birthdate', 'address', 'email']
+const restoredDraft   = ref(false)
+
+function clearDraft() {
+  try { sessionStorage.removeItem(DRAFT_KEY) } catch { /* storage unavailable: nothing to clear */ }
+}
+
+function restoreDraft() {
+  // Remove drafts saved by the earlier version in shared localStorage
+  try { localStorage.removeItem(DRAFT_KEY) } catch { /* storage unavailable */ }
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null')
+    if (!draft) return
+    if (!draft.savedAt || Date.now() - draft.savedAt > DRAFT_MAX_AGE) {
+      clearDraft()
+      return
+    }
+    DRAFT_FIELDS.forEach(f => { if (typeof draft[f] === 'string') form[f] = draft[f] })
+    restoredDraft.value = DRAFT_FIELDS.some(f => form[f])
+  } catch {
+    clearDraft() // unreadable draft: start fresh
+  }
+}
+
+function saveDraft() {
+  const draft = Object.fromEntries(DRAFT_FIELDS.map(f => [f, form[f]]))
+  try {
+    if (DRAFT_FIELDS.some(f => draft[f])) {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, savedAt: Date.now() }))
+    } else {
+      clearDraft()
+    }
+  } catch { /* storage full or blocked (e.g. private window): the form still works */ }
+}
+
+function startOver() {
+  DRAFT_FIELDS.forEach(f => { form[f] = '' })
+  clearDraft()
+  restoredDraft.value = false
+}
+
+restoreDraft()
+// Save on every change to the remembered fields (password fields are not watched)
+watch(() => DRAFT_FIELDS.map(f => form[f]), saveDraft)
+
 /* ── PHONE ── */
 function normalizePhone(input) {
   if (!input) return null
@@ -501,6 +561,7 @@ async function register() {
       birthdate:             form.birthdate || null,
     })
 
+    clearDraft() // account created: forget what was typed
     router.push('/login')
   } catch (err) {
     const errors = err.response?.data?.errors
@@ -606,6 +667,10 @@ async function register() {
 
 /* FORM */
 .step-form { width: 100%; }
+
+/* Saved-draft note */
+.draft-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; box-sizing: border-box; font-size: 0.82rem; font-weight: 600; color: #0e5c36; background: #eefaf3; border: 1px solid #bfe8cf; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+.draft-reset { flex-shrink: 0; background: none; border: none; padding: 0; color: #0e5c36; font-weight: 700; font-size: 0.82rem; text-decoration: underline; cursor: pointer; }
 .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 .input-group {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Category;
 use App\Models\Campaign;
+use App\Support\CategoryIcon;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -56,13 +57,15 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:20',
+            // Chosen by the super admin; empty = pick one from the name
+            'icon' => 'nullable|string|max:16',
         ]);
 
         $category = Category::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'color' => $validated['color'] ?? '#0F2D52',
-            'icon' => $this->generateIcon($validated['name']),
+            'icon' => $validated['icon'] ?? CategoryIcon::for($validated['name']),
             'is_active' => true,
         ]);
 
@@ -93,9 +96,19 @@ class CategoryController extends Controller
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:20',
-            'icon' => 'nullable|string',
+            'icon' => 'nullable|string|max:16',
             'is_active' => 'boolean',
         ]);
+
+        // Renamed and no icon chosen: if the current icon was picked automatically,
+        // pick a new one for the new name. An icon the super admin chose is kept.
+        $renamed = isset($validated['name']) && $validated['name'] !== $category->name;
+        if ($renamed && empty($validated['icon']) && CategoryIcon::isAutomatic($category->icon, $category->name)) {
+            $validated['icon'] = CategoryIcon::for($validated['name']);
+        }
+        if (array_key_exists('icon', $validated) && empty($validated['icon'])) {
+            unset($validated['icon']); // an empty value never wipes the icon
+        }
 
         $category->update($validated);
 
@@ -119,23 +132,14 @@ class CategoryController extends Controller
     }
 
     /* =========================
-       AUTO ICON LOGIC
+       ICON PREVIEW (as the super admin types a name)
+       + the icons they can choose from instead
     ========================= */
-    private function generateIcon($name)
+    public function suggestIcon(Request $request)
     {
-        $name = strtolower($name);
-
-        return match (true) {
-            str_contains($name, 'health') => '🏥',
-            str_contains($name, 'education') => '🎓',
-            str_contains($name, 'food') => '🍽️',
-            str_contains($name, 'animal') => '🐶',
-            str_contains($name, 'environment') => '🌱',
-            str_contains($name, 'children') => '🧒',
-            str_contains($name, 'emergency') => '🚨',
-            str_contains($name, 'medical') => '💊',
-            str_contains($name, 'disaster') => '🌪️',
-            default => '📁',
-        };
+        return response()->json([
+            'icon' => CategoryIcon::for($request->query('name', '')),
+            'choices' => CategoryIcon::CHOICES,
+        ]);
     }
 }

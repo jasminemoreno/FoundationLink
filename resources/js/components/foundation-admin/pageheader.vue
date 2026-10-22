@@ -26,7 +26,7 @@
     flex-wrap: wrap;
     gap: 14px;
   }
-  .fa-ph-left h2 { font-size: 1.15rem; color: #0F2D52; margin: 0 0 4px; }
-  .fa-ph-left p  { font-size: 0.83rem; color: #94a3b8; margin: 0; }
+  .fa-ph-left h2 { font-size: 1.15rem; color: var(--fa-heading); margin: 0 0 4px; }
+  .fa-ph-left p  { font-size: 0.83rem; color: var(--fa-muted); margin: 0; }
   .fa-ph-right   { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   </style>

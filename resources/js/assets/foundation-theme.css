@@ -1,0 +1,43 @@
+/*
+ * Foundation admin colour palette — one place to change the look.
+ *
+ * Light, blue-based theme. Every text colour below was checked for a contrast
+ * of at least 4.5:1 on white (WCAG AA), so text stays readable.
+ * Blue is the main colour; amber (blue's complementary colour) is the accent
+ * for pending / attention states, with green and red for success and errors.
+ *
+ * Imported by the foundation admin layout and the sign-up layout; the
+ * variables are prefixed --fa- so they don't affect donor / super admin pages.
+ */
+:root {
+  /* Blue (main) */
+  --fa-primary:        #2563eb;  /* buttons, links, active menu — 5.2:1 on white */
+  --fa-primary-hover:  #1d4ed8;
+  --fa-primary-soft:   #e8f0fe;  /* active menu / chip backgrounds */
+  --fa-primary-tint:   #f3f7fe;  /* very light blue panels */
+  --fa-primary-border: #c9dafb;
+
+  /* Text */
+  --fa-heading:        #1e3a8a;  /* page and card titles — 10.4:1 */
+  --fa-text:           #1e293b;  /* body text — 14.6:1 */
+  --fa-text-2:         #475569;  /* secondary text — 7.6:1 */
+  --fa-muted:          #5b6b82;  /* hints, labels, dates — 5.4:1 (was #94a3b8 at 2.6:1) */
+
+  /* Surfaces */
+  --fa-bg:             #f4f8fd;  /* page background */
+  --fa-surface:        #ffffff;  /* cards, sidebar, header */
+  --fa-border:         #e2e8f0;
+  --fa-border-soft:    #edf2f8;
+  --fa-shadow:         0 1px 3px rgba(30, 58, 138, 0.06), 0 1px 2px rgba(30, 58, 138, 0.04);
+  --fa-shadow-lg:      0 12px 32px rgba(30, 58, 138, 0.14);
+
+  /* Status */
+  --fa-success:        #047857;  --fa-success-bg: #ecfdf5;  --fa-success-border: #a7f3d0;
+  --fa-warning:        #b45309;  --fa-warning-bg: #fffbeb;  --fa-warning-border: #fde68a;
+  --fa-danger:         #b91c1c;  --fa-danger-bg:  #fef2f2;  --fa-danger-border:  #fecaca;
+  --fa-danger-solid:   #dc2626;  /* red buttons (white text 4.8:1) */
+
+  /* Amber accent (complements the blue) */
+  --fa-accent:         #f59e0b;
+  --fa-accent-soft:    #fef3c7;
+}

@@ -65,10 +65,13 @@ const tabs = ref([
 ])
 
 function normalizeStatus(status) {
-  if (status === "pending_verification" || status === "under_review") return "pending"
-  if (status === "verified") return "approved"
+  // Only foundations that sent their documents are waiting for review
+  if (status === "under_review") return "pending"
+  // Suspended foundations were approved before; suspensions are managed on the Foundations page
+  if (status === "verified" || status === "suspended") return "approved"
   if (status === "rejected") return "rejected"
-  return "pending"
+  // Sign-up not finished (no documents yet): nothing to review, so in no tab
+  return "unfinished"
 }
 
 async function fetchFoundations() {

@@ -90,8 +90,9 @@
       error.value = 'Passwords do not match.'
       return
     }
-    if (password.value.length < 8) {
-      error.value = 'Password must be at least 8 characters.'
+    // Same rules as sign-up
+    if (password.value.length < 12 || !/\d/.test(password.value) || !/[^a-zA-Z0-9]/.test(password.value)) {
+      error.value = 'Password must be at least 12 characters and include a number and a special character.'
       return
     }
   

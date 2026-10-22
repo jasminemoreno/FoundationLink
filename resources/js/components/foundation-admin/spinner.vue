@@ -7,7 +7,7 @@
   
   const props = defineProps({
     size:  { type: Number, default: 32 },
-    color: { type: String, default: '#0F2D52' },
+    color: { type: String, default: '#2563eb' },
     track: { type: String, default: '#e2e8f0' },
   })
   

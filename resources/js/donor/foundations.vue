@@ -210,8 +210,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
-import Spinner from '../components/donor/spinner.vue'
-import EmptyState from '../components/donor/emptystate.vue'
+import Spinner from '../components/donor/Spinner.vue'
+import EmptyState from '../components/donor/Emptystate.vue'
 import { getImage } from '../composable/donor'
 
 const foundations   = ref([])

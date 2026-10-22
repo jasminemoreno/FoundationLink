@@ -55,6 +55,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Address of the Vue app (the login page) used in emailed links, e.g. the
+    // email-change confirmation link. Set FRONTEND_URL in .env.
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
@@ -67,6 +71,11 @@ return [
     */
 
     'timezone' => 'UTC',
+
+    // Time zone used to group dates for people (e.g. "donations per day" on the
+    // Reports timeline). Stored times stay in UTC above; this only decides which
+    // calendar day/month an event falls on for the foundation's users.
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Manila'),
 
     /*
     |--------------------------------------------------------------------------

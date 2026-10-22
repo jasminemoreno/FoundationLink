@@ -394,23 +394,23 @@ async function cancelPendingEmail() {
 </script>
 
 <style scoped>
-.page { background: #f0f4f9; min-height: 100%; box-sizing: border-box; }
+.page { background: var(--fa-primary-tint); min-height: 100%; box-sizing: border-box; }
 .container { max-width: 900px; }
 
 .page-head { margin-bottom: 24px; }
-.page-head h1 { font-size: 1.3rem; font-weight: 800; color: #133c8a; margin: 0 0 4px; }
-.page-head p  { font-size: 0.85rem; color: #64748b; margin: 0; }
+.page-head h1 { font-size: 1.3rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 4px; }
+.page-head p  { font-size: 0.85rem; color: var(--fa-muted); margin: 0; }
 
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 
-.panel { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(15,45,82,0.06); }
-.panel-title { font-size: 1rem; font-weight: 800; color: #133c8a; margin: 0 0 18px; }
+.panel { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(30,58,138,0.06); }
+.panel-title { font-size: 1rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 18px; }
 
 .photo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
 
 .upload-avatar {
   width: 72px; height: 72px; border-radius: 50%;
-  background: linear-gradient(135deg, #1a56c4, #133c8a);
+  background: linear-gradient(135deg, var(--fa-primary), var(--fa-primary-hover));
   display: flex; align-items: center; justify-content: center;
   position: relative; cursor: pointer; overflow: hidden; flex-shrink: 0;
   border: 3px solid #eef4ff;
@@ -419,44 +419,44 @@ async function cancelPendingEmail() {
 .avatar-initials { color: white; font-size: 1.3rem; font-weight: 800; }
 
 .upload-overlay {
-  position: absolute; inset: 0; background: rgba(15,45,82,0.5);
+  position: absolute; inset: 0; background: rgba(30,58,138,0.5);
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.2s;
 }
 .upload-avatar:hover .upload-overlay { opacity: 1; }
 
 .photo-hint { display: flex; flex-direction: column; gap: 2px; }
-.photo-hint strong { font-size: 0.87rem; color: #133c8a; }
-.photo-hint span { font-size: 0.76rem; color: #94a3b8; }
+.photo-hint strong { font-size: 0.87rem; color: var(--fa-primary-hover); }
+.photo-hint span { font-size: 0.76rem; color: var(--fa-muted); }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 6px; }
+.form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--fa-text-2); margin-bottom: 6px; }
 .form-group input {
-  width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px;
+  width: 100%; padding: 10px 14px; border: 1px solid var(--fa-border); border-radius: 10px;
   font-size: 0.87rem; outline: none; box-sizing: border-box; font-family: inherit; transition: border-color 0.2s;
 }
-.form-group input:focus { border-color: #1a56c4; box-shadow: 0 0 0 3px rgba(26,86,196,0.08); }
-.form-group input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+.form-group input:focus { border-color: var(--fa-primary); box-shadow: 0 0 0 3px rgba(26,86,196,0.08); }
+.form-group input:disabled { background: #f8fafc; color: var(--fa-muted); cursor: not-allowed; }
 
-.field-hint { font-size: 0.75rem; color: #94a3b8; margin: 6px 0 0; }
+.field-hint { font-size: 0.75rem; color: var(--fa-muted); margin: 6px 0 0; }
 
-.error-text { font-size: 0.82rem; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; }
-.success-text { font-size: 0.82rem; color: #059669; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; }
+.error-text { font-size: 0.82rem; color: var(--fa-danger); background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; }
+.success-text { font-size: 0.82rem; color: var(--fa-success); background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; }
 
 .btn-save {
   width: 100%; padding: 11px; border: none; border-radius: 10px;
-  background: #1a56c4; color: white; font-size: 0.87rem; font-weight: 700; cursor: pointer;
+  background: var(--fa-primary); color: white; font-size: 0.87rem; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: background 0.2s;
 }
-.btn-save:hover:not(:disabled) { background: #133c8a; }
+.btn-save:hover:not(:disabled) { background: var(--fa-primary-hover); }
 .btn-save:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* EMAIL CHANGE */
 .link-btn {
   margin-top: 8px; background: none; border: none; padding: 0;
-  font-size: 0.78rem; font-weight: 700; color: #1a56c4; cursor: pointer;
+  font-size: 0.78rem; font-weight: 700; color: var(--fa-primary); cursor: pointer;
 }
 .link-btn:hover { text-decoration: underline; }
 .link-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -464,7 +464,7 @@ async function cancelPendingEmail() {
 .email-pending {
   display: flex; align-items: flex-start; gap: 8px;
   margin-top: 8px; padding: 10px 12px;
-  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px;
+  background: var(--fa-primary-soft); border: 1px solid #bfdbfe; border-radius: 10px;
   font-size: 0.78rem; color: #1e3a8a; line-height: 1.5;
 }
 .email-pending svg { flex-shrink: 0; margin-top: 1px; }
@@ -472,7 +472,7 @@ async function cancelPendingEmail() {
 
 .email-edit-box {
   margin-top: 12px; padding: 14px;
-  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+  background: #f8fafc; border: 1px solid var(--fa-border); border-radius: 12px;
 }
 .email-edit-box .form-group:last-of-type { margin-bottom: 0; }
 .email-edit-actions { display: flex; gap: 8px; justify-content: flex-end; }
@@ -481,9 +481,9 @@ async function cancelPendingEmail() {
   padding: 8px 16px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.btn-cancel-sm { border: 1px solid #e2e8f0; background: white; color: #64748b; }
-.btn-save-sm { border: none; background: #1a56c4; color: white; min-width: 150px; }
-.btn-save-sm:hover:not(:disabled) { background: #133c8a; }
+.btn-cancel-sm { border: 1px solid var(--fa-border); background: white; color: var(--fa-muted); }
+.btn-save-sm { border: none; background: var(--fa-primary); color: white; min-width: 150px; }
+.btn-save-sm:hover:not(:disabled) { background: var(--fa-primary-hover); }
 .btn-save-sm:disabled { opacity: 0.65; cursor: not-allowed; }
 
 /* CHANGE EMAIL BUTTON (trigger only) */
@@ -491,12 +491,12 @@ async function cancelPendingEmail() {
   margin-top: 10px;
   display: inline-flex; align-items: center; gap: 8px;
   padding: 9px 16px; border-radius: 10px;
-  border: 1px solid #bfdbfe; background: #eff6ff; color: #1a56c4;
+  border: 1px solid #bfdbfe; background: var(--fa-primary-soft); color: var(--fa-primary);
   font-size: 0.82rem; font-weight: 700; font-family: inherit; cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.1s;
 }
 .btn-change-email:hover {
-  background: #1a56c4; border-color: #1a56c4; color: white;
+  background: var(--fa-primary); border-color: var(--fa-primary); color: white;
   box-shadow: 0 4px 12px rgba(26,86,196,0.25);
 }
 .btn-change-email:active { transform: translateY(1px); box-shadow: none; }
@@ -508,9 +508,9 @@ async function cancelPendingEmail() {
 .pw-toggle {
   position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
   background: none; border: none; padding: 4px; cursor: pointer;
-  color: #94a3b8; display: flex; align-items: center; justify-content: center;
+  color: var(--fa-muted); display: flex; align-items: center; justify-content: center;
 }
-.pw-toggle:hover { color: #1a56c4; }
+.pw-toggle:hover { color: var(--fa-primary); }
 
 @media (max-width: 760px) {
   .grid { grid-template-columns: 1fr; }

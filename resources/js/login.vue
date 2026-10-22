@@ -99,16 +99,59 @@
         Together, we bring hope through transparent<br />and meaningful giving
       </p>
     </aside>
+
+    <!-- SUSPENDED / INACTIVE ACCOUNT POPUP -->
+    <div v-if="blocked" class="blocked-overlay" @click.self="closeBlocked">
+      <div class="blocked-card" role="dialog" aria-modal="true" aria-labelledby="blocked-title">
+        <button type="button" class="blocked-close" aria-label="Close" @click="closeBlocked">
+          <X :size="18" stroke-width="2" />
+        </button>
+
+        <div class="blocked-icon"><ShieldAlert :size="30" stroke-width="1.9" /></div>
+
+        <h2 id="blocked-title" class="blocked-title">
+          {{ blocked.suspended ? 'Account suspended' : 'Account not active' }}
+        </h2>
+
+        <p class="blocked-text">
+          {{ blocked.suspended ? 'Your account has been suspended.' : 'Your account is currently not active.' }}
+        </p>
+
+        <div v-if="blocked.suspended && blocked.reason" class="blocked-reason">
+          <span class="blocked-reason-label">Reason</span>
+          <p>{{ blocked.reason }}</p>
+        </div>
+
+        <p class="blocked-text">
+          If you believe this is a mistake or would like to appeal, please contact the support team.
+          Include your account email and your explanation so we can review your request.
+        </p>
+
+        <a :href="appealLink" class="btn-support">
+          <Mail :size="18" stroke-width="1.9" />
+          <span>Contact Support</span>
+        </a>
+
+        <p class="blocked-email">
+          Support email: <a :href="`mailto:${blocked.email}`">{{ blocked.email }}</a>
+        </p>
+
+        <button type="button" class="btn-blocked-close" @click="closeBlocked">Close</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Heart } from 'lucide-vue-next'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Heart, ShieldAlert, X } from 'lucide-vue-next'
 
 const router = useRouter()
+
+// Used only if the server response does not include its own support address.
+const SUPPORT_EMAIL = 'jmoreno4@ssct.edu.ph'
 
 const form = reactive({
   email: '',
@@ -119,6 +162,30 @@ const focusedField = ref(null)
 const showPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
+
+// Set when the server says the account is suspended or inactive
+const blocked = ref(null)
+
+const appealLink = computed(() => {
+  if (!blocked.value) return '#'
+
+  const subject = 'FoundationLink account appeal'
+  const body = [
+    'Hello FoundationLink support team,',
+    '',
+    `My account (${form.email}) was ${blocked.value.suspended ? 'suspended' : 'marked inactive'}.`,
+    blocked.value.reason ? `Reason shown: ${blocked.value.reason}` : '',
+    '',
+    'I would like to appeal because:',
+    '',
+  ].join('\n')
+
+  return `mailto:${blocked.value.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+})
+
+function closeBlocked() {
+  blocked.value = null
+}
 
 async function handleLogin() {
   if (isLoading.value) return
@@ -156,9 +223,19 @@ async function handleLogin() {
     }
 
   } catch (err) {
-    error.value =
-      err.response?.data?.message ||
-      'Login failed. Please try again.'
+    const body = err.response?.data
+
+    if (body?.code === 'account_suspended' || body?.code === 'account_inactive') {
+      blocked.value = {
+        suspended: body.code === 'account_suspended',
+        reason: body.reason || '',
+        email: body.support_email || SUPPORT_EMAIL,
+      }
+    } else {
+      error.value =
+        body?.message ||
+        'Login failed. Please try again.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -578,5 +655,157 @@ async function handleLogin() {
 @media (prefers-reduced-motion: reduce) {
   .login-card { animation: none; }
   .btn-login, .btn-arrow { transition: none; }
+}
+
+/* ── NEW: SUSPENDED / INACTIVE ACCOUNT POPUP ── */
+.blocked-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 24, 17, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.blocked-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 22px;
+  padding: 36px 32px 24px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(10, 40, 28, 0.35);
+  animation: rise 0.3s ease both;
+}
+
+.blocked-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #7b8a83;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.blocked-close:hover { background: #eaf5ef; color: var(--green-700); }
+
+.blocked-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fdf3f2;
+  color: #b3261e;
+}
+
+.blocked-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--green-900);
+  letter-spacing: -0.4px;
+  margin-bottom: 8px;
+}
+
+.blocked-text {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #6b7770;
+  margin-bottom: 14px;
+}
+
+.blocked-reason {
+  text-align: left;
+  background: #fdf3f2;
+  border: 1px solid #f3d4d1;
+  border-left: 4px solid #d93025;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+.blocked-reason-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b3261e;
+  margin-bottom: 4px;
+}
+.blocked-reason p {
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.55;
+  color: #16211b;
+  word-break: break-word;
+}
+
+.btn-support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--green-700);
+  color: #fff;
+  font-size: 15.5px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(34, 105, 79, 0.28);
+  transition: background 0.15s ease;
+}
+.btn-support:hover { background: var(--green-800); }
+.btn-support:focus-visible { outline: 2px solid var(--green-900); outline-offset: 3px; }
+
+.blocked-email {
+  margin-top: 12px;
+  font-size: 13.5px;
+  color: #6b7770;
+}
+.blocked-email a {
+  color: var(--green-700);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.btn-blocked-close {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #7b8a83;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-blocked-close:hover { background: #eaf5ef; color: var(--green-700); }
+
+@media (max-width: 480px) {
+  .blocked-card { padding: 32px 20px 20px; border-radius: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blocked-card { animation: none; }
 }
 </style>

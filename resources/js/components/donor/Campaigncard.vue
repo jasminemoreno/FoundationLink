@@ -9,6 +9,7 @@
         <div v-else class="cc-cover-placeholder">📢</div>
         <div class="cc-cover-overlay" />
         <span class="cc-type" :class="campaign.type">{{ campaign.type }}</span>
+        <span v-if="campaign.promotion" class="cc-promoted">⭐ Promoted</span>
       </div>
   
       <div class="cc-body">
@@ -18,6 +19,18 @@
         </div>
   
         <h3 class="cc-title" @click="$emit('view-details', campaign)">{{ campaign.title }}</h3>
+        <!-- The foundation's message while the campaign is promoted -->
+        <div v-if="campaign.promotion" class="cc-promo-msg">
+          <p class="cc-promo-text">📢 {{ campaign.promotion.message }}</p>
+          <!-- Urgency + social proof; each line only when there is something to say -->
+          <div v-if="showDaysLeft || campaign.promotion.donated_this_week > 0" class="cc-promo-facts">
+            <template v-if="showDaysLeft">
+              <span v-if="campaign.promotion.days_left === 0">⏳ Last day!</span>
+              <span v-else>⏳ {{ campaign.promotion.days_left }} {{ campaign.promotion.days_left === 1 ? 'day' : 'days' }} left</span>
+            </template>
+            <span v-if="campaign.promotion.donated_this_week > 0">👥 {{ campaign.promotion.donated_this_week }} donated this week</span>
+          </div>
+        </div>
         <p class="cc-desc">{{ campaign.description }}</p>
   
         <div v-if="showDeadline && campaign.end_date" class="cc-deadline">
@@ -57,9 +70,10 @@
   </template>
   
   <script setup>
+  import { computed } from 'vue'
   import { getImage, formatMoney, formatDate } from '../../composable/donor'
-  
-  defineProps({
+
+  const props = defineProps({
     campaign:     { type: Object,  required: true },
     highlighted:  { type: Boolean, default: false },
     // Dashboard's "Featured Campaigns" never shows the deadline row (only active
@@ -68,6 +82,16 @@
   })
   
   defineEmits(['view-details', 'donate'])
+
+  // "⏳ N days left" under a promotion, unless the message already says it
+  // (a Deadline promotion's ready-made message does: "Only 31 days left…")
+  const showDaysLeft = computed(() => {
+    const p = props.campaign.promotion
+    if (!p || p.days_left === null || p.days_left === undefined) return false
+    const msg = (p.message || '').toLowerCase()
+    if (p.days_left === 0) return !msg.includes('last day')
+    return !msg.includes(`${p.days_left} day`)
+  })
   </script>
   
   <style scoped>
@@ -97,6 +121,12 @@
   .cc-type.both     { background: rgba(124,58,237,0.9); }
   
   .cc-body { padding: 18px; }
+
+  /* Promoted campaign: amber badge on the cover + the foundation's message */
+  .cc-promoted { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; background: #b45309; color: #fff; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.02em; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+  .cc-promo-msg { margin: 6px 0 8px; padding: 8px 10px; border-radius: 8px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 0.8rem; font-weight: 600; line-height: 1.45; }
+  .cc-promo-text { margin: 0; }
+  .cc-promo-facts { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #fcd34d; font-size: 0.76rem; font-weight: 700; color: #92400e; }
   .cc-foundation-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
   .cc-foundation-dot { width: 5px; height: 5px; border-radius: 50%; background: #1a8a52; flex-shrink: 0; }
   .cc-foundation { font-size: 0.72rem; color: #1a8a52; font-weight: 700; }

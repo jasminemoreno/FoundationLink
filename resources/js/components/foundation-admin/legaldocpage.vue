@@ -45,20 +45,20 @@
   </script>
   
   <style scoped>
-  .page { background: #f0f4f9; min-height: 100%; padding-bottom: 40px; box-sizing: border-box; }
+  .page { background: var(--fa-primary-tint); min-height: 100%; padding-bottom: 40px; box-sizing: border-box; }
   .container { max-width: 720px; margin: 0 auto; padding: 32px 24px; }
   
   .page-head { margin-bottom: 24px; }
-  .page-head h1 { font-size: 1.45rem; font-weight: 800; color: #133c8a; margin: 0 0 6px; }
-  .page-head p  { font-size: 0.8rem; color: #64748b; margin: 0; }
+  .page-head h1 { font-size: 1.45rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 6px; }
+  .page-head p  { font-size: 0.8rem; color: var(--fa-muted); margin: 0; }
   
-  .doc { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 1px 4px rgba(15,45,82,0.06); }
+  .doc { background: white; border-radius: 16px; padding: 30px; box-shadow: 0 1px 4px rgba(30,58,138,0.06); }
   
   section { margin-bottom: 20px; }
   section:last-child { margin-bottom: 0; }
   
-  h2 { font-size: 0.95rem; font-weight: 700; color: #1a56c4; margin: 0 0 8px; }
-  p  { font-size: 0.85rem; color: #475569; line-height: 1.7; margin: 0; }
-  a  { color: #1a56c4; font-weight: 600; text-decoration: none; }
+  h2 { font-size: 0.95rem; font-weight: 700; color: var(--fa-primary); margin: 0 0 8px; }
+  p  { font-size: 0.85rem; color: var(--fa-text-2); line-height: 1.7; margin: 0; }
+  a  { color: var(--fa-primary); font-weight: 600; text-decoration: none; }
   a:hover { text-decoration: underline; }
   </style>

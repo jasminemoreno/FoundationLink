@@ -342,6 +342,8 @@ async function saveEdit(u) {
     const formData = new FormData()
     formData.append("title", editForm.title)
     if (editForm.content) formData.append("content", editForm.content)
+    // Tells the server the list below is complete, so removing every photo works
+    formData.append("existing_photos_sent", "1")
     editForm.existingPhotos.forEach(p => formData.append("existing_photos[]", p))
     editForm.newPhotos.forEach(photo => formData.append("photos[]", photo))
 
@@ -442,7 +444,7 @@ onMounted(fetchUpdates)
   border: 1px solid #e8edf3;
   padding: 22px 24px;
   margin-top: 20px;
-  box-shadow: 0 1px 6px rgba(15,45,82,0.04);
+  box-shadow: 0 1px 6px rgba(30,58,138,0.04);
 }
 
 .panel-head {
@@ -454,16 +456,16 @@ onMounted(fetchUpdates)
 
 .panel-head-left { display: flex; align-items: center; gap: 9px; }
 
-.panel-title { font-size: 0.98rem; font-weight: 800; color: #0F2D52; margin: 0; letter-spacing: -0.01em; }
+.panel-title { font-size: 0.98rem; font-weight: 800; color: var(--fa-heading); margin: 0; letter-spacing: -0.01em; }
 
 .updates-count-chip {
-  background: #eff6ff; color: #3b82f6; font-size: 0.72rem; font-weight: 700;
+  background: var(--fa-primary-soft); color: var(--fa-primary); font-size: 0.72rem; font-weight: 700;
   padding: 2px 9px; border-radius: 20px;
 }
 
 .post-btn {
   display: flex; align-items: center; gap: 6px;
-  background: #0F2D52;
+  background: var(--fa-primary);
   color: white;
   border: none;
   border-radius: 9px;
@@ -473,9 +475,9 @@ onMounted(fetchUpdates)
   cursor: pointer;
   transition: background 0.2s, transform 0.15s;
 }
-.post-btn:hover { background: #1a3f6b; transform: translateY(-1px); }
+.post-btn:hover { background: var(--fa-primary-hover); transform: translateY(-1px); }
 
-.hint-text { font-size: 0.81rem; color: #94a3b8; margin: 10px 0 0; }
+.hint-text { font-size: 0.81rem; color: var(--fa-muted); margin: 10px 0 0; }
 
 /* FORM */
 .update-form {
@@ -488,12 +490,12 @@ onMounted(fetchUpdates)
 
 .field { margin-bottom: 13px; }
 
-label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px; color: #1e293b; }
+label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px; color: var(--fa-text); }
 
 .field-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--fa-border);
   border-radius: 9px;
   outline: none;
   font-size: 0.85rem;
@@ -501,15 +503,15 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   box-sizing: border-box;
   transition: border-color 0.15s;
 }
-.field-input:focus { border-color: #0F2D52; box-shadow: 0 0 0 3px rgba(15,45,82,0.08); }
+.field-input:focus { border-color: var(--fa-heading); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
 .field-textarea { height: 80px; resize: none; }
 
-.file-count { font-size: 0.76rem; color: #94a3b8; margin-top: 5px; }
+.file-count { font-size: 0.76rem; color: var(--fa-muted); margin-top: 5px; }
 
 .error-text {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #cc3333;
+  color: var(--fa-danger);
   background: #fff5f5;
   border: 1px solid #ffd0d0;
   border-radius: 9px;
@@ -523,7 +525,7 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   flex: 1;
   padding: 10px;
   background: #f1f5f9;
-  color: #475569;
+  color: var(--fa-text-2);
   border: none;
   border-radius: 9px;
   font-weight: 700;
@@ -531,12 +533,12 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   cursor: pointer;
   transition: background 0.15s;
 }
-.cancel-btn:hover { background: #e2e8f0; }
+.cancel-btn:hover { background: var(--fa-border); }
 
 .submit-btn {
   flex: 2;
   padding: 10px;
-  background: #0F2D52;
+  background: var(--fa-primary);
   color: white;
   border: none;
   border-radius: 9px;
@@ -548,7 +550,7 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   justify-content: center;
   transition: background 0.15s;
 }
-.submit-btn:hover:not(:disabled) { background: #1a3f6b; }
+.submit-btn:hover:not(:disabled) { background: var(--fa-primary-hover); }
 .submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .danger-btn {
@@ -571,7 +573,7 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
 /* LIST */
 .empty-state {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 28px; color: #94a3b8; font-size: 0.85rem; gap: 8px;
+  padding: 28px; color: var(--fa-muted); font-size: 0.85rem; gap: 8px;
 }
 .empty-state.small { padding: 18px; }
 .empty-icon { font-size: 1.7rem; }
@@ -585,17 +587,17 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   background: #fafbfd;
   transition: box-shadow 0.2s;
 }
-.update-card:hover { box-shadow: 0 2px 10px rgba(15,45,82,0.05); }
+.update-card:hover { box-shadow: 0 2px 10px rgba(30,58,138,0.05); }
 
 .update-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.update-head h4 { margin: 0; font-size: 0.9rem; font-weight: 700; color: #0F2D52; }
+.update-head h4 { margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--fa-heading); }
 .update-head-right { display: flex; align-items: center; gap: 6px; }
-.update-date { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
+.update-date { font-size: 0.72rem; color: var(--fa-muted); white-space: nowrap; }
 
 .icon-btn {
   border: none;
   background: #f1f5f9;
-  color: #475569;
+  color: var(--fa-text-2);
   width: 23px;
   height: 23px;
   border-radius: 7px;
@@ -606,16 +608,16 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   justify-content: center;
   transition: background 0.15s;
 }
-.icon-btn:hover { background: #e2e8f0; }
-.icon-btn.danger { color: #dc2626; }
+.icon-btn:hover { background: var(--fa-border); }
+.icon-btn.danger { color: var(--fa-danger); }
 .icon-btn.danger:hover { background: #fef2f2; }
 
-.update-content { font-size: 0.83rem; color: #475569; margin: 9px 0 0; line-height: 1.65; }
+.update-content { font-size: 0.83rem; color: var(--fa-text-2); margin: 9px 0 0; line-height: 1.65; }
 
 .update-photos { display: flex; gap: 8px; margin-top: 11px; flex-wrap: wrap; }
 .update-photo {
   width: 90px; height: 90px; object-fit: cover; border-radius: 9px;
-  cursor: pointer; border: 1px solid #e2e8f0; transition: transform 0.15s;
+  cursor: pointer; border: 1px solid var(--fa-border); transition: transform 0.15s;
 }
 .update-photo:hover { transform: scale(1.04); }
 
@@ -653,21 +655,21 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   cursor: default;
   background: #f8fafc;
   border-color: #e8edf3;
-  color: #94a3b8;
+  color: var(--fa-muted);
 }
 .reaction-heart { font-size: 0.95rem; }
 
 /* WHO REACTED MODAL */
 .reactors-modal { width: 380px; padding: 22px; }
 .reactors-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.reactors-head h4 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 1rem; color: #0F2D52; }
+.reactors-head h4 { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 1rem; color: var(--fa-heading); }
 .reactors-heart { font-size: 1rem; }
-.reactors-subtitle { font-size: 0.78rem; color: #94a3b8; margin: 0 0 14px; }
+.reactors-subtitle { font-size: 0.78rem; color: var(--fa-muted); margin: 0 0 14px; }
 
 .modal-close-btn {
-  width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e2e8f0;
+  width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--fa-border);
   background: transparent; display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: #64748b; transition: background 0.15s;
+  cursor: pointer; color: var(--fa-muted); transition: background 0.15s;
 }
 .modal-close-btn:hover { background: #f1f5f9; }
 
@@ -686,7 +688,7 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
 
 .reactor-avatar {
   width: 36px; height: 36px; border-radius: 50%;
-  background: #0F2D52; color: white;
+  background: var(--fa-primary); color: white;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.72rem; font-weight: 700;
   flex-shrink: 0; overflow: hidden;
@@ -694,22 +696,22 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
 .reactor-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .reactor-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.reactor-name { font-size: 0.85rem; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.reactor-time { font-size: 0.71rem; color: #94a3b8; }
+.reactor-name { font-size: 0.85rem; font-weight: 600; color: var(--fa-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reactor-time { font-size: 0.71rem; color: var(--fa-muted); }
 .reactor-heart-small { font-size: 0.85rem; flex-shrink: 0; }
 
 /* DELETE MODAL */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(15,45,82,0.4);
+  position: fixed; inset: 0; background: rgba(30,58,138,0.4);
   backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; z-index: 100; padding: 24px;
 }
 .modal-sm {
   background: white; border-radius: 16px; padding: 22px; width: 380px;
-  box-shadow: 0 20px 60px rgba(15,45,82,0.2);
+  box-shadow: 0 20px 60px rgba(30,58,138,0.2);
 }
-.modal-sm h4 { margin: 0 0 10px; color: #0F2D52; font-size: 1rem; }
-.modal-sm p { font-size: 0.85rem; color: #475569; margin: 0 0 18px; line-height: 1.5; }
+.modal-sm h4 { margin: 0 0 10px; color: var(--fa-heading); font-size: 1rem; }
+.modal-sm p { font-size: 0.85rem; color: var(--fa-text-2); margin: 0 0 18px; line-height: 1.5; }
 
 /* SPINNERS */
 .spinner {
@@ -717,8 +719,8 @@ label { font-size: 0.82rem; font-weight: 700; display: block; margin-bottom: 6px
   border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 .spinner-dark {
-  width: 24px; height: 24px; border: 3px solid #e2e8f0;
-  border-top-color: #0F2D52; border-radius: 50%; animation: spin 0.7s linear infinite;
+  width: 24px; height: 24px; border: 3px solid var(--fa-border);
+  border-top-color: var(--fa-heading); border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

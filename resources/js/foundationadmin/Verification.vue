@@ -130,10 +130,10 @@ const form = reactive({
 })
 
 onMounted(() => {
-  const adminId = sessionStorage.getItem("foundation_admin_id")
-  const foundationId = sessionStorage.getItem("foundation_id")
-
-  if (!adminId || !foundationId) {
+  // Open during first sign-up (registration token) or when a logged-in admin
+  // comes back from the dashboard to upload missing documents (login token).
+  // The server finds the foundation from the token, so no foundation id is needed.
+  if (!sessionStorage.getItem("registration_token") && !sessionStorage.getItem("token")) {
     router.push("/foundation/register")
   }
 })
@@ -166,7 +166,7 @@ async function submitVerification() {
   try {
     const formData = new FormData()
 
-    formData.append("foundation_id", sessionStorage.getItem("foundation_id"))
+    // The server finds the foundation from the token
     formData.append("admin_id_type", form.admin_id_type)
     formData.append("doc_type", form.doc_type)
 
@@ -178,18 +178,28 @@ async function submitVerification() {
       formData.append("doc_files[]", file)
     })
 
+    // During first sign-up send the registration token; when logged in,
+    // api.js already attaches the login token
+    const registrationToken = sessionStorage.getItem("registration_token")
     await api.post("/foundation-verification", formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        ...(registrationToken ? { Authorization: `Bearer ${registrationToken}` } : {})
       }
     })
+
+    // Sign-up finished; the server has already revoked the registration token
+    sessionStorage.removeItem("registration_token")
+    sessionStorage.removeItem("foundation_admin_id")
+    sessionStorage.removeItem("foundation_id")
 
     isSubmitting.value = false
     showSuccess.value = true
 
     setTimeout(() => {
       showSuccess.value = false
-      router.push("/login")
+      // First sign-up ends at the login page; a logged-in admin goes back to the dashboard
+      router.push(registrationToken ? "/login" : "/foundation/dashboard")
     }, 2000)
 
   } catch (err) {
@@ -205,13 +215,13 @@ async function submitVerification() {
   text-align: center;
   font-size: 1.4rem;
   font-weight: 800;
-  color: #1a1a2e;
+  color: var(--fa-text);
 }
 
 .form-subtitle {
   text-align: center;
   font-size: 0.85rem;
-  color: #777;
+  color: var(--fa-muted);
   margin-bottom: 1.5rem;
 }
 
@@ -243,7 +253,7 @@ label {
 .error-text {
   font-size: 0.83rem;
   font-weight: 600;
-  color: #cc3333;
+  color: var(--fa-danger);
   background: #fff5f5;
   border: 1px solid #ffd0d0;
   border-radius: 8px;
@@ -254,7 +264,7 @@ label {
 .next-btn {
   width: 100%;
   padding: 14px;
-  background: #0d47a1;
+  background: var(--fa-primary-hover);
   color: white;
   border: none;
   border-radius: 10px;
@@ -267,7 +277,7 @@ label {
 }
 
 .next-btn:hover:not(:disabled) {
-  background: #1565c0;
+  background: var(--fa-primary);
 }
 
 .next-btn:disabled {
@@ -313,7 +323,7 @@ label {
   height: 56px;
   border-radius: 50%;
   background: #f0fdf4;
-  color: #059669;
+  color: var(--fa-success);
   font-size: 1.6rem;
   font-weight: 800;
   display: flex;
@@ -325,7 +335,7 @@ label {
 .success-popup p {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--fa-text);
   margin: 0;
 }
 

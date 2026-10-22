@@ -145,12 +145,12 @@ async function decline() {
 <style scoped>
 .confirm-page {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
-  background: #f0f4f9; padding: 24px;
+  background: var(--fa-primary-tint); padding: 24px;
 }
 .confirm-card {
   background: white; border-radius: 20px; padding: 40px 32px;
   max-width: 400px; width: 100%; text-align: center;
-  box-shadow: 0 4px 20px rgba(15,45,82,0.08);
+  box-shadow: 0 4px 20px rgba(30,58,138,0.08);
 }
 
 .confirm-icon {
@@ -158,33 +158,33 @@ async function decline() {
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 18px;
 }
-.confirm-icon.loading   { background: #eff6ff; color: #1a56c4; }
-.confirm-icon.ready     { background: #eff6ff; color: #1a56c4; }
-.confirm-icon.success   { background: #f0fdf4; color: #059669; }
-.confirm-icon.cancelled { background: #f1f5f9; color: #64748b; }
-.confirm-icon.error     { background: #fef2f2; color: #dc2626; }
+.confirm-icon.loading   { background: var(--fa-primary-soft); color: var(--fa-primary); }
+.confirm-icon.ready     { background: var(--fa-primary-soft); color: var(--fa-primary); }
+.confirm-icon.success   { background: #f0fdf4; color: var(--fa-success); }
+.confirm-icon.cancelled { background: #f1f5f9; color: var(--fa-muted); }
+.confirm-icon.error     { background: #fef2f2; color: var(--fa-danger); }
 .confirm-icon .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.confirm-card h2 { font-size: 1.1rem; font-weight: 800; color: #133c8a; margin: 0 0 8px; }
-.confirm-card p  { font-size: 0.87rem; color: #64748b; line-height: 1.5; margin: 0 0 22px; }
-.new-email { color: #133c8a; word-break: break-all; }
+.confirm-card h2 { font-size: 1.1rem; font-weight: 800; color: var(--fa-primary-hover); margin: 0 0 8px; }
+.confirm-card p  { font-size: 0.87rem; color: var(--fa-muted); line-height: 1.5; margin: 0 0 22px; }
+.new-email { color: var(--fa-primary-hover); word-break: break-all; }
 
 .btn-row { display: flex; gap: 10px; }
 .btn-yes, .btn-no {
   flex: 1; padding: 11px 14px; border-radius: 10px;
   font-size: 0.85rem; font-weight: 700; cursor: pointer;
 }
-.btn-yes { border: none; background: #1a56c4; color: white; }
-.btn-yes:hover:not(:disabled) { background: #133c8a; }
-.btn-no { border: 1px solid #e2e8f0; background: white; color: #64748b; }
+.btn-yes { border: none; background: var(--fa-primary); color: white; }
+.btn-yes:hover:not(:disabled) { background: var(--fa-primary-hover); }
+.btn-no { border: 1px solid var(--fa-border); background: white; color: var(--fa-muted); }
 .btn-no:hover:not(:disabled) { background: #f8fafc; }
 .btn-yes:disabled, .btn-no:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .btn-back {
   display: inline-block; padding: 10px 22px; border-radius: 10px;
-  background: #1a56c4; color: white; text-decoration: none;
+  background: var(--fa-primary); color: white; text-decoration: none;
   font-size: 0.85rem; font-weight: 700;
 }
-.btn-back:hover { background: #133c8a; }
+.btn-back:hover { background: var(--fa-primary-hover); }
 </style>

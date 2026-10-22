@@ -17,8 +17,8 @@
   </template>
   
   <script setup>
-  import Sidebar from '@/components/superadmin/Sidebar.vue'
-  import Topbar from '@/components/superadmin/Topbar.vue'
+  import Sidebar from '@/components/superadmin/sidebar.vue'
+  import Topbar from '@/components/superadmin/topbar.vue'
 
  
 import { useRouter } from 'vue-router'
