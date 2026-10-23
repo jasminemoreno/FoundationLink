@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\FoundationFollowController;
 use App\Http\Controllers\Api\FoundationPaymentAccountController;
 use App\Http\Controllers\Api\FoundationVerificationController;
 use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\SuperAdminReportController;
@@ -182,6 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [DonorController::class, 'notifications']);
         Route::get('/notifications/count', [DonorController::class, 'notificationsCount']);
         Route::post('/notifications/seen', [DonorController::class, 'markNotificationsSeen']);
+        // Phone push notifications (mobile app)
+        Route::post('/push-token', [PushTokenController::class, 'store']);
+        Route::delete('/push-token', [PushTokenController::class, 'destroy']);
         Route::get('/profile', [DonorController::class, 'profile']);
         Route::post('/profile', [DonorController::class, 'updateProfile']);
         Route::post('/profile/photo', [DonorController::class, 'uploadPhoto']);

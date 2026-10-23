@@ -279,8 +279,8 @@
             <div class="panel-body">
               <div class="danger-row">
                 <div>
-                  <div class="danger-title">Log out of all devices</div>
-                  <div class="danger-desc">This will end all your active sessions.</div>
+                  <div class="danger-title">Log out</div>
+                  <div class="danger-desc">This will sign you out of FoundationLink on this device.</div>
                 </div>
                 <button class="btn-logout" @click="logout">Logout</button>
               </div>

@@ -363,7 +363,7 @@ class DonorController extends Controller
             'message' => $n->message,
             'date' => $n->created_at,
             'read' => $n->read_at !== null,
-            'link' => $this->resolveNotificationLink($n, $updateFoundationIds),
+            'link' => $n->donorLink($updateFoundationIds),
         ]));
     }
 
@@ -719,18 +719,6 @@ class DonorController extends Controller
     /* ══════════════════════════════
        HELPERS
     ══════════════════════════════ */
-    private function resolveNotificationLink(Notification $n, $updateFoundationIds): ?string
-    {
-        return match ($n->type) {
-            'new_campaign', 'campaign_promotion' => '/donor/campaigns?tab=new&highlight=' . $n->notifiable_id,
-            'campaign_update' => isset($updateFoundationIds[$n->notifiable_id])
-                ? '/donor/foundations/' . $updateFoundationIds[$n->notifiable_id]
-                : null,
-            'donation_received', 'donation_cancelled' => '/donor/donations?highlight=' . $n->notifiable_id,
-            default => null,
-        };
-    }
-
     private function formatCampaign($c, $detail = false): array
     {
         $data = [

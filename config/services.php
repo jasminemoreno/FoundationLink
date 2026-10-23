@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Phone push notifications for the donor mobile app (App\Support\ExpoPush).
+    // The access token is only needed if "enhanced push security" is turned
+    // on in the Expo dashboard.
+    'expo' => [
+        'push_enabled' => env('PUSH_NOTIFICATIONS_ENABLED', true),
+        'push_url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+    ],
+
 ];

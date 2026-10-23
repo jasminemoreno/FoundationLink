@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\ExpoPush;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,6 +18,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Schema::defaultStringLength(191);
 
+        // One collector per request, so its notifications are pushed together
+        $this->app->singleton(ExpoPush::class);
     }
 
     /**
@@ -30,5 +33,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('auth-attempts', function (Request $request) {
             return Limit::perMinute(5)->by(strtolower((string) $request->input('email')) . '|' . $request->ip());
         });
+
+        // Push this request's new notifications to phones after the response is sent
+        $this->app->terminating(fn() => $this->app->make(ExpoPush::class)->flush());
     }
 }
