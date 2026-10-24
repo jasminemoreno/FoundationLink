@@ -73,7 +73,8 @@
               My Donations
             </router-link>
             <router-link to="/donor/campaigns"     class="ql-item">
-              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <!-- megaphone = campaigns, as everywhere else (it was a document) -->
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
               Browse Campaigns
             </router-link>
             <router-link to="/donor/notifications" class="ql-item">
@@ -190,8 +191,9 @@
                     :type="showEmailPass ? 'text' : 'password'"
                     placeholder="Confirm it's you"
                   />
-                  <button class="eye-btn" type="button" @click="showEmailPass = !showEmailPass">
-                    👁
+                  <button class="eye-btn" type="button" @click="showEmailPass = !showEmailPass"
+                          :aria-label="showEmailPass ? 'Hide password' : 'Show password'">
+                    <PasswordEyeIcon :visible="showEmailPass" />
                   </button>
                 </div>
               </div>
@@ -224,8 +226,9 @@
                     :type="showCurrentPass ? 'text' : 'password'"
                     placeholder="Enter your current password"
                   />
-                  <button class="eye-btn" type="button" @click="showCurrentPass = !showCurrentPass">
-                    👁
+                  <button class="eye-btn" type="button" @click="showCurrentPass = !showCurrentPass"
+                          :aria-label="showCurrentPass ? 'Hide password' : 'Show password'">
+                    <PasswordEyeIcon :visible="showCurrentPass" />
                   </button>
                 </div>
               </div>
@@ -238,8 +241,9 @@
                     :type="showPass ? 'text' : 'password'"
                     placeholder="Min 12 characters, with a number and a symbol"
                   />
-                  <button class="eye-btn" type="button" @click="showPass = !showPass">
-                    👁
+                  <button class="eye-btn" type="button" @click="showPass = !showPass"
+                          :aria-label="showPass ? 'Hide password' : 'Show password'">
+                    <PasswordEyeIcon :visible="showPass" />
                   </button>
                 </div>
               </div>
@@ -252,8 +256,9 @@
                     :type="showConfirm ? 'text' : 'password'"
                     placeholder="Repeat password"
                   />
-                  <button class="eye-btn" type="button" @click="showConfirm = !showConfirm">
-                    👁
+                  <button class="eye-btn" type="button" @click="showConfirm = !showConfirm"
+                          :aria-label="showConfirm ? 'Hide password' : 'Show password'">
+                    <PasswordEyeIcon :visible="showConfirm" />
                   </button>
                 </div>
               </div>
@@ -298,6 +303,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Spinner from '../components/donor/spinner.vue'
+import PasswordEyeIcon from '../components/PasswordEyeIcon.vue'
 import { getImage, formatMoney } from '../composable/donor.js'
 
 const router    = useRouter()
@@ -678,7 +684,8 @@ const avatarColor = computed(() => {
 
 .pass-wrap { position: relative; }
 .pass-wrap input { padding-right: 44px; }
-.eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: transparent; cursor: pointer; font-size: 1rem; }
+.eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; color: #64748b; }
+.eye-btn:hover { color: #1a8a52; }
 
 .success-text { font-size: 0.82rem; color: #059669; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 8px; }
 .error-text   { font-size: 0.82rem; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 8px; }

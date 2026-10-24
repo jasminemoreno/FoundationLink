@@ -38,7 +38,8 @@
           <p class="welcome-sub">We sent a 6-digit code to {{ email }}</p>
 
           <div class="input-group" :class="{ focused: focused }">
-            <div class="input-icon"><img src="@/assets/icons/padlock.png" alt="" /></div>
+            <!-- a verification code, not a password (the padlock means password) -->
+            <div class="input-icon"><ShieldCheck :size="20" color="#1a8a52" stroke-width="2" aria-hidden="true" /></div>
             <input
               v-model="otp"
               type="text"
@@ -74,12 +75,16 @@
             <div class="input-icon"><img src="@/assets/icons/padlock.png" alt="" /></div>
             <input
               v-model="password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               placeholder="New password"
               autocomplete="new-password"
               @focus="focusedField = 'password'"
               @blur="focusedField = null"
             />
+            <button type="button" class="eye-btn" @mousedown.prevent @click="showPassword = !showPassword"
+                    :aria-label="showPassword ? 'Hide password' : 'Show password'">
+              <PasswordEyeIcon :visible="showPassword" />
+            </button>
           </div>
 
           <!-- Live rules: same as sign-up (the server checks them too) -->
@@ -102,13 +107,17 @@
             <div class="input-icon"><img src="@/assets/icons/padlock.png" alt="" /></div>
             <input
               v-model="passwordConfirmation"
-              type="password"
+              :type="showConfirm ? 'text' : 'password'"
               placeholder="Confirm new password"
               autocomplete="new-password"
               @focus="focusedField = 'confirm'"
               @blur="focusedField = null"
               @keyup.enter="resetPassword"
             />
+            <button type="button" class="eye-btn" @mousedown.prevent @click="showConfirm = !showConfirm"
+                    :aria-label="showConfirm ? 'Hide password' : 'Show password'">
+              <PasswordEyeIcon :visible="showConfirm" />
+            </button>
           </div>
 
           <ul v-if="passwordConfirmation" class="password-checklist" aria-live="polite">
@@ -146,6 +155,8 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+import PasswordEyeIcon from './components/PasswordEyeIcon.vue'
+import { ShieldCheck } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -155,6 +166,8 @@ const otp = ref('')
 const resetToken = ref('')
 const password = ref('')
 const passwordConfirmation = ref('')
+const showPassword = ref(false)
+const showConfirm = ref(false)
 
 // Same rules as sign-up, shown live while typing (foundation admins and donors share this page)
 const passwordChecks = computed(() => ({
@@ -255,6 +268,9 @@ async function resetPassword() {
 .input-icon img { width: 20px; height: 20px; object-fit: contain; }
 .input-group input { flex: 1; height: 50px; border: none; outline: none; padding: 0 16px; font-size: 14.5px; font-family: 'Nunito', sans-serif; font-weight: 600; color: #1a1a1a; background: transparent; text-align: center; }
 .input-group input::placeholder { color: #c0d4ca; font-weight: 500; }
+/* show/hide password, on the right of the row (the padlock is on the left) */
+.eye-btn { width: 50px; height: 50px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: none; background: transparent; color: #7b8a83; cursor: pointer; }
+.eye-btn:hover { color: #1a8a52; }
 .error-text { width: 100%; font-size: 13px; font-weight: 600; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
 .success-text { font-size: 14px; font-weight: 500; color: #1a8a52; background: #f0faf5; border: 1px solid #ddeee6; border-radius: 10px; padding: 16px; margin-bottom: 22px; line-height: 1.6; }
 .btn-login { width: 100%; height: 52px; background: #1a8a52; color: #fff; border: none; border-radius: 10px; font-size: 15.5px; font-weight: 800; font-family: 'Nunito', sans-serif; letter-spacing: 0.3px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-bottom: 22px; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; box-shadow: 0 4px 14px rgba(26, 138, 82, 0.3); }

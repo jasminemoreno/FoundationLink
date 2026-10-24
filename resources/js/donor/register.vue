@@ -104,9 +104,12 @@
           <div class="input-row">
             <div class="input-group select-group" :class="{ focused: focused === 'gender' }">
               <div class="input-icon">
+                <!-- people (it was a clock) -->
                 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 8v4l3 3"/>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
               </div>
               <select
@@ -198,7 +201,8 @@
               @focus="focused = 'password'; passwordFocused = true"
               @blur="focused = null"
             />
-            <button class="eye-btn" type="button" @click="showPass = !showPass">
+            <button class="eye-btn" type="button" @click="showPass = !showPass"
+                    :aria-label="showPass ? 'Hide password' : 'Show password'">
               <svg v-if="!showPass" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
@@ -239,7 +243,8 @@
               @focus="focused = 'password_confirmation'"
               @blur="focused = null"
             />
-            <button class="eye-btn" type="button" @click="showConfirm = !showConfirm">
+            <button class="eye-btn" type="button" @click="showConfirm = !showConfirm"
+                    :aria-label="showConfirm ? 'Hide password' : 'Show password'">
               <svg v-if="!showConfirm" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
               </svg>
@@ -722,6 +727,18 @@ async function register() {
 
 .input-group select { cursor: pointer; }
 .input-group input::placeholder { color: #c0d4ca; font-weight: 500; }
+
+/* Birthdate: the calendar on the left is its icon, so hide the browser's second
+   one, but keep the whole box opening the date picker when clicked */
+.input-group input[type="date"] { position: relative; cursor: pointer; }
+.input-group input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  opacity: 0;
+  cursor: pointer;
+}
 
 .eye-btn {
   width: 44px;

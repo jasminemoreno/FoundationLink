@@ -141,16 +141,34 @@
 
           <div class="form-group">
             <label>Current Password</label>
-            <input v-model="passwordForm.current_password" type="password" />
+            <div class="pw-wrap">
+              <input v-model="passwordForm.current_password" :type="showPw.current ? 'text' : 'password'" />
+              <button type="button" class="pw-toggle" @click="showPw.current = !showPw.current"
+                      :aria-label="showPw.current ? 'Hide password' : 'Show password'">
+                <PasswordEyeIcon :visible="showPw.current" />
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <label>New Password</label>
-            <input v-model="passwordForm.new_password" type="password" placeholder="At least 12 characters" />
+            <div class="pw-wrap">
+              <input v-model="passwordForm.new_password" :type="showPw.new ? 'text' : 'password'" placeholder="At least 12 characters" />
+              <button type="button" class="pw-toggle" @click="showPw.new = !showPw.new"
+                      :aria-label="showPw.new ? 'Hide password' : 'Show password'">
+                <PasswordEyeIcon :visible="showPw.new" />
+              </button>
+            </div>
             <p class="field-hint">Must be at least 12 characters and include a number and a special character.</p>
           </div>
           <div class="form-group">
             <label>Confirm New Password</label>
-            <input v-model="passwordForm.new_password_confirmation" type="password" />
+            <div class="pw-wrap">
+              <input v-model="passwordForm.new_password_confirmation" :type="showPw.confirm ? 'text' : 'password'" />
+              <button type="button" class="pw-toggle" @click="showPw.confirm = !showPw.confirm"
+                      :aria-label="showPw.confirm ? 'Hide password' : 'Show password'">
+                <PasswordEyeIcon :visible="showPw.confirm" />
+              </button>
+            </div>
           </div>
 
           <p v-if="passwordError" class="error-text">{{ passwordError }}</p>
@@ -169,9 +187,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import Spinner from '../components/foundation-admin/spinner.vue'
+import PasswordEyeIcon from '../components/PasswordEyeIcon.vue'
 
 const form = ref({
   first_name: '',
@@ -204,6 +223,8 @@ const emailEditing        = ref(false)
 const newEmail            = ref('')
 const emailPassword       = ref('')
 const showEmailPassword   = ref(false)
+// "show password" toggles of the Change Password boxes
+const showPw = reactive({ current: false, new: false, confirm: false })
 const emailError          = ref('')
 const emailSuccess        = ref('')
 const sendingEmailRequest = ref(false)

@@ -24,4 +24,11 @@
   #app {
     min-height: 100vh;
   }
+
+  /* Edge adds its own "show password" eye (and a clear "x") to inputs. Every
+     password box here has its own eye button, so hide Edge's to avoid two. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
   </style>

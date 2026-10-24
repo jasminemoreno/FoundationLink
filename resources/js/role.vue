@@ -115,9 +115,10 @@
         </ul>
 
         <button class="card-btn btn-admin" @click="goTo('admin')">
-          <svg class="btn-icon" viewBox="0 0 24 24" fill="none">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
-              stroke="currentColor" stroke-width="2" />
+          <!-- building, like the card's icon and the admin menu's "Foundations" (it was a house) -->
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3" />
           </svg>
 
           Continue as Foundation Admin

@@ -27,7 +27,7 @@
         >
           <div class="notif-clickzone" @click="openNotification(n)">
             <div class="notif-icon" :class="n.type">
-              <span>{{ n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : '📢' }}</span>
+              <span>{{ notifIcon(n.type) }}</span>
             </div>
             <div class="notif-body">
               <div class="notif-title">{{ n.title }}</div>
@@ -81,6 +81,18 @@ const confirmClearAll = ref(false)
 const clearing         = ref(false)
 
 const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
+
+// One icon per kind of notification the server sends (same meaning as the mobile app)
+const NOTIF_ICONS = {
+  donation_received:  '✅',
+  donation_cancelled: '❌',
+  campaign_update:    '📰',
+  new_campaign:       '📢',
+  campaign_promotion: '⭐',
+  success: '✅',
+  warning: '⚠️',
+}
+const notifIcon = type => NOTIF_ICONS[type] ?? '🔔'
 
 async function load() {
   isLoading.value = true
@@ -177,6 +189,12 @@ async function clearAll() {
 .notif-icon.success { background: #f0fdf4; }
 .notif-icon.warning { background: #fefce8; }
 .notif-icon.info    { background: #eff6ff; }
+/* the server's notification types (same colors as the mobile app) */
+.notif-icon.donation_received  { background: #f0fdf4; }
+.notif-icon.donation_cancelled { background: #fef2f2; }
+.notif-icon.campaign_update    { background: #f0f9ff; }
+.notif-icon.new_campaign       { background: #eff6ff; }
+.notif-icon.campaign_promotion { background: #fffbeb; }
 
 .notif-body { flex: 1; min-width: 0; }
 .notif-title   { font-size: 0.92rem; font-weight: 800; color: #0F2D52; margin-bottom: 4px; }

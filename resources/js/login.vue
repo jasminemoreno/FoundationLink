@@ -54,8 +54,9 @@
             @mousedown.prevent
             @click="showPassword = !showPassword"
           >
-            <Eye v-if="showPassword" :size="18" stroke-width="1.9" />
-            <EyeOff v-else :size="18" stroke-width="1.9" />
+            <!-- shows what tapping does, matching the label: eye = show, crossed eye = hide -->
+            <EyeOff v-if="showPassword" :size="18" stroke-width="1.9" />
+            <Eye v-else :size="18" stroke-width="1.9" />
           </button>
         </div>
 

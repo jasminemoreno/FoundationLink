@@ -343,7 +343,7 @@ const stats = computed(() => [
     // Only donations the foundation confirmed receiving
     value: "₱" + formatMoney(donations.value.filter(d => d.type === 'monetary' && d.status === 'received').reduce((s, d) => s + Number(d.amount || 0), 0)),
     bg: "linear-gradient(135deg, #d5f5e3, #a8e6c1)", col: "#0e5c36",
-    icon: `<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`
+    icon: `<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`
   },
   {
     label: "Item Donations",
