@@ -12,6 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Online, an HTTPS proxy sits in front of Laravel (ngrok, or the host's
+        // front server). Trust its X-Forwarded-* headers so links are https://
+        // and request->ip() is the visitor, not the proxy.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
