@@ -8,10 +8,13 @@ export function mapsPointUrl(lat, lng) {
 // A readable address for a GPS spot ("Rizal St, Poblacion, Surigao City, Surigao del Norte"),
 // from OpenStreetMap's free lookup. Returns '' when it can't tell — the typed address still works.
 export async function addressFromPoint(lat, lng) {
+  // give up after 8 s on a slow connection
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-      { headers: { 'Accept-Language': 'en' } }
+      { headers: { 'Accept-Language': 'en' }, signal: controller.signal }
     )
     if (!res.ok) return ''
     const a = (await res.json())?.address || {}
@@ -24,6 +27,8 @@ export async function addressFromPoint(lat, lng) {
     return [...new Set(parts)].join(', ')
   } catch {
     return ''
+  } finally {
+    clearTimeout(timer)
   }
 }
 
