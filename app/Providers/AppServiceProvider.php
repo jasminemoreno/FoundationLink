@@ -34,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by(strtolower((string) $request->input('email')) . '|' . $request->ip());
         });
 
+        // Login itself locks after 5 wrong tries for 5 minutes (AuthController::login),
+        // with a clear message; this only stops scripts flooding the login page.
+        RateLimiter::for('login-flood', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
+
         // Push this request's new notifications to phones after the response is sent
         $this->app->terminating(fn() => $this->app->make(ExpoPush::class)->flush());
     }

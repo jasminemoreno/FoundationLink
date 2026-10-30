@@ -119,7 +119,12 @@
         />
 
         <div v-else class="recent-panel">
-          <div class="recent-item" v-for="d in recentDonations" :key="d.id">
+          <router-link
+            v-for="d in recentDonations" :key="d.id"
+            class="recent-item"
+            :to="`/donor/donations?highlight=${d.id}&open=1`"
+            :aria-label="`View donation to ${d.campaign?.title || 'campaign'}`"
+          >
             <div class="recent-icon-wrap" :class="d.type">
               <span>{{ d.type === 'monetary' ? '💰' : '📦' }}</span>
             </div>
@@ -134,7 +139,7 @@
               <span class="recent-status" :class="d.status">{{ statusLabel(d.status) }}</span>
               <span class="recent-date">{{ formatDate(d.donated_at) }}</span>
             </div>
-          </div>
+          </router-link>
         </div>
       </div>
 
@@ -492,6 +497,8 @@ function statusLabel(s) {
   padding: 15px 22px;
   border-bottom: 1px solid #f1f5f9;
   transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
 }
 .recent-item:last-child { border-bottom: none; }
 .recent-item:hover { background: #f8fffe; }

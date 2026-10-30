@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /** Address shown to suspended users who need to ask for reactivation. */
-    private const SUPPORT_EMAIL = 'jmoreno4@ssct.edu.ph';
+    private const SUPPORT_EMAIL = 'foundationlink.support@gmail.com';
 
     /** Name of the temporary token used during foundation sign-up. */
     public const REGISTRATION_TOKEN_NAME = 'foundation_registration';
@@ -28,15 +28,52 @@ class AuthController extends Controller
     /** Wrong OTP guesses allowed before the code is thrown away. */
     private const MAX_OTP_ATTEMPTS = 5;
 
+    // Login: after this many wrong tries, login is locked for LOGIN_LOCK_MINUTES
+    private const MAX_LOGIN_TRIES = 5;
+    private const LOGIN_LOCK_MINUTES = 5;
+
     /**
      * Login
      */
+    /** Login is locked after too many wrong tries: how long to wait, and what can help. */
+    private function loginLockedResponse(array $lock)
+    {
+        $seconds = max(1, $lock['locked_until'] - now()->timestamp);
+        $minutes = (int) ceil($seconds / 60);
+        // locked more than once in a row: also point to support
+        $support = $lock['lockouts'] > 1;
+
+        $message = "Too many failed login attempts. Please wait {$minutes} " . ($minutes === 1 ? 'minute' : 'minutes')
+            . ' and try again. Forgot your password? You can reset it.';
+        if ($support) {
+            $message .= ' Still having trouble? Contact support at ' . self::SUPPORT_EMAIL . '.';
+        }
+
+        return response()->json([
+            'message' => $message,
+            'errors' => ['email' => [$message]],
+            'code' => 'login_locked',
+            'retry_after' => $seconds,
+            'show_forgot' => true,
+            'show_support' => $support,
+            'support_email' => self::SUPPORT_EMAIL,
+        ], 429)->header('Retry-After', (string) $seconds);
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required']
         ]);
+
+        // Wrong tries are counted per email + network address, so one person
+        // can't lock someone else out. While locked, even the right password waits.
+        $lockKey = 'login-lock:' . sha1(strtolower($credentials['email']) . '|' . $request->ip());
+        $lock = Cache::get($lockKey, ['fails' => 0, 'lockouts' => 0, 'locked_until' => 0]);
+        if ($lock['locked_until'] > now()->timestamp) {
+            return $this->loginLockedResponse($lock);
+        }
 
         // Refuse suspended / inactive accounts with a clear reason. This runs only
         // after the password is confirmed, so the message never reveals which
@@ -77,10 +114,35 @@ class AuthController extends Controller
         }
 
         if (!Auth::attempt($credentials)) {
-            throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.']
-            ]);
+            $lock['fails']++;
+            if ($lock['fails'] >= self::MAX_LOGIN_TRIES) {
+                $lock = [
+                    'fails' => 0,
+                    'lockouts' => $lock['lockouts'] + 1,
+                    'locked_until' => now()->addMinutes(self::LOGIN_LOCK_MINUTES)->timestamp,
+                ];
+                Cache::put($lockKey, $lock, now()->addHour());
+                return $this->loginLockedResponse($lock);
+            }
+            Cache::put($lockKey, $lock, now()->addHour());
+
+            // Same answer whether or not the email exists
+            $left = self::MAX_LOGIN_TRIES - $lock['fails'];
+            $message = "Wrong email or password. You have {$left} " . ($left === 1 ? 'try' : 'tries') . ' left.';
+
+            return response()->json([
+                'message' => $message,
+                'errors' => ['email' => [$message]],
+                'code' => 'invalid_credentials',
+                'attempts_left' => $left,
+                // from the 3rd wrong try: "Forgot your password?"; after a lock: "contact support"
+                'show_forgot' => $lock['fails'] >= 3 || $lock['lockouts'] > 0,
+                'show_support' => $lock['lockouts'] > 0,
+                'support_email' => self::SUPPORT_EMAIL,
+            ], 422);
         }
+
+        Cache::forget($lockKey); // a successful login starts the count over
 
         $user = Auth::user();
 
@@ -144,9 +206,13 @@ class AuthController extends Controller
             'birthdate' => $validated['birthdate'] ?? null,
         ]);
 
+        // Logged in right away: the website and app take a new donor straight to Home
+        $token = $user->createToken('auth_token')->plainTextToken;
+
         return response()->json([
             'success' => true,
             'message' => 'Donor account created successfully.',
+            'token' => $token,
             'user' => $user
         ], 201);
     }

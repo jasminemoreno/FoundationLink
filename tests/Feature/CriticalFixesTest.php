@@ -96,8 +96,9 @@ class CriticalFixesTest extends TestCase
             ->assertOk();
 
         $this->assertSame('under_review', Foundation::where('user_id', $newAdminId)->value('status'));
-        // Registration token is retired once sign-up is finished.
-        $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $newAdminId)->count());
+        // Registration token is retired once sign-up is finished; the admin is
+        // logged in with a normal login token instead (SignUpAutoLoginTest).
+        $this->assertSame(['auth_token'], DB::table('personal_access_tokens')->where('tokenable_id', $newAdminId)->pluck('name')->all());
     }
 
     /* ── 2. Submitting verification documents ── */
@@ -206,8 +207,8 @@ class CriticalFixesTest extends TestCase
         $victim = $this->makeUser('donor');
         $colleague = $this->makeUser('donor');
 
-        // Five wrong guesses on one account are allowed, the sixth is blocked...
-        for ($i = 0; $i < 5; $i++) {
+        // Four wrong guesses on one account get "wrong password", the fifth locks it...
+        for ($i = 0; $i < 4; $i++) {
             $this->postJson('/api/login', ['email' => $victim->email, 'password' => 'wrong-guess'])->assertStatus(422);
         }
         $this->postJson('/api/login', ['email' => $victim->email, 'password' => 'wrong-guess'])->assertStatus(429);

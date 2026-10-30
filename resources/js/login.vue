@@ -65,11 +65,24 @@
           <router-link to="/forgot-password" class="forgot">Forgot Password?</router-link>
         </div>
 
-        <!-- ERROR -->
-        <p v-if="error" class="error-text">{{ error }}</p>
+        <!-- ERROR (wrong password: tries left; locked: countdown) -->
+        <div v-if="error || lockSecondsLeft > 0" class="error-text" role="alert">
+          <template v-if="lockSecondsLeft > 0">
+            Too many failed login attempts. Please try again in <strong>{{ lockCountdown }}</strong>.
+          </template>
+          <template v-else>{{ error }}</template>
+          <div v-if="loginHelp.showForgot" class="login-help">
+            Forgot your password?
+            <router-link to="/forgot-password" class="help-link">Reset it here</router-link>
+          </div>
+          <div v-if="loginHelp.showSupport" class="login-help">
+            Still having trouble? Contact support at
+            <a :href="`mailto:${loginHelp.supportEmail}`" class="help-link">{{ loginHelp.supportEmail }}</a>
+          </div>
+        </div>
 
         <!-- LOGIN -->
-        <button class="btn-login" @click="handleLogin" :disabled="isLoading">
+        <button class="btn-login" @click="handleLogin" :disabled="isLoading || lockSecondsLeft > 0">
           <template v-if="!isLoading">
             <span>Login</span>
             <ArrowRight :size="20" stroke-width="2" class="btn-arrow" />
@@ -144,7 +157,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Heart, ShieldAlert, X } from 'lucide-vue-next'
@@ -152,7 +165,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, User, Heart, ShieldAlert, X } from
 const router = useRouter()
 
 // Used only if the server response does not include its own support address.
-const SUPPORT_EMAIL = 'jmoreno4@ssct.edu.ph'
+const SUPPORT_EMAIL = 'foundationlink.support@gmail.com'
 
 const form = reactive({
   email: '',
@@ -163,6 +176,34 @@ const focusedField = ref(null)
 const showPassword = ref(false)
 const isLoading = ref(false)
 const error = ref('')
+
+// After wrong tries the server says what can help; after 5 it locks login for 5 minutes
+const loginHelp = reactive({ showForgot: false, showSupport: false, supportEmail: '' })
+const lockSecondsLeft = ref(0)
+let lockTimer = null
+const lockCountdown = computed(() => {
+  const m = Math.floor(lockSecondsLeft.value / 60)
+  const s = String(lockSecondsLeft.value % 60).padStart(2, '0')
+  return `${m}:${s}`
+})
+function startLockCountdown(seconds) {
+  clearInterval(lockTimer)
+  lockSecondsLeft.value = Math.max(0, Math.round(seconds))
+  lockTimer = setInterval(() => {
+    lockSecondsLeft.value = Math.max(0, lockSecondsLeft.value - 1)
+    if (lockSecondsLeft.value === 0) {
+      clearInterval(lockTimer)
+      error.value = 'You can try again now.'
+    }
+  }, 1000)
+}
+// the lock is per email: typing another email clears it (the server checks again)
+watch(() => form.email, () => {
+  clearInterval(lockTimer)
+  lockSecondsLeft.value = 0
+  loginHelp.showForgot = loginHelp.showSupport = false
+})
+onBeforeUnmount(() => clearInterval(lockTimer))
 
 // Set when the server says the account is suspended or inactive
 const blocked = ref(null)
@@ -196,8 +237,11 @@ async function handleLogin() {
     return
   }
 
+  if (lockSecondsLeft.value > 0) return
+
   isLoading.value = true
   error.value = ''
+  loginHelp.showForgot = loginHelp.showSupport = false
 
   try {
     const { data } = await api.post('/login', {
@@ -232,6 +276,12 @@ async function handleLogin() {
         reason: body.reason || '',
         email: body.support_email || SUPPORT_EMAIL,
       }
+    } else if (body?.code === 'invalid_credentials' || body?.code === 'login_locked') {
+      loginHelp.showForgot = !!body.show_forgot
+      loginHelp.showSupport = !!body.show_support
+      loginHelp.supportEmail = body.support_email || SUPPORT_EMAIL
+      error.value = body.message
+      if (body.code === 'login_locked') startLockCountdown(body.retry_after || 300)
     } else {
       error.value =
         body?.message ||
@@ -534,6 +584,8 @@ async function handleLogin() {
   padding: 10px 14px;
   margin-bottom: 16px;
 }
+.login-help { margin-top: 6px; color: #7a2a24; }
+.help-link { color: #1a6b43; font-weight: 700; text-decoration: underline; }
 
 /* BUTTONS */
 .btn-login {

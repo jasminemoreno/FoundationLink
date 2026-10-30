@@ -363,11 +363,29 @@
       <div class="form-row">
         <div class="form-group">
           <label>Start Date</label>
-          <input v-model="form.start_date" type="date" />
+          <DateField
+            v-model="form.start_date"
+            clearable
+            placeholder="Choose start date"
+            title="Campaign start date"
+            min="2000-01-01"
+            accent="#2563eb"
+            accent-soft="#e8f0fe"
+          />
         </div>
         <div class="form-group">
           <label>End Date</label>
-          <input v-model="form.end_date" type="date" />
+          <!-- can't end before it starts -->
+          <DateField
+            v-model="form.end_date"
+            clearable
+            placeholder="Choose end date"
+            title="Campaign end date"
+            :min="form.start_date ? form.start_date.slice(0, 10) : '2000-01-01'"
+            :start="form.start_date ? form.start_date.slice(0, 10) : ''"
+            accent="#2563eb"
+            accent-soft="#e8f0fe"
+          />
         </div>
       </div>
 
@@ -743,7 +761,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import api from "@/services/api"
 import CampaignUpdatesPanel from "../components/foundation-admin/campaignupdate.vue"
 import PageHeader from "../components/foundation-admin/pageheader.vue"
@@ -752,6 +770,7 @@ import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import Badge from "../components/foundation-admin/badge.vue"
 import FoundationModal from "../components/foundation-admin/basemodal.vue"
+import DateField from "../components/DateField.vue"
 import Lightbox from "../components/foundation-admin/lightbox.vue"
 import Spinner from "../components/foundation-admin/spinner.vue"
 
@@ -797,6 +816,12 @@ const form = ref({
   cover_photo: null,
   accepted_delivery_methods: [],
   accepted_payment_methods: []
+})
+
+// A campaign can't end before it starts: moving the start past the end clears the end date
+watch(() => form.value.start_date, start => {
+  const end = form.value.end_date
+  if (start && end && String(end).slice(0, 10) < String(start).slice(0, 10)) form.value.end_date = ""
 })
 
 const paymentAccounts = ref([])

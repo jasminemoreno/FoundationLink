@@ -124,7 +124,14 @@
               <div class="form-row">
                 <div class="form-group">
                   <label>Birthdate</label>
-                  <input v-model="form.birthdate" type="date" />
+                  <DateField
+                    v-model="form.birthdate"
+                    clearable
+                    placeholder="Choose your birthdate"
+                    title="Your birthdate"
+                    :max="birthdateMax"
+                    :start="birthdateStart"
+                  />
                 </div>
                 <div class="form-group">
                   <label>Email</label>
@@ -304,6 +311,12 @@ import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import Spinner from '../components/donor/spinner.vue'
 import PasswordEyeIcon from '../components/PasswordEyeIcon.vue'
+import DateField from '../components/DateField.vue'
+import { addDaysTo, manilaToday } from '../composable/dates.js'
+
+// Birthdate must be before today; the calendar opens about 20 years back when empty
+const birthdateMax   = addDaysTo(manilaToday(), -1)
+const birthdateStart = `${Number(manilaToday().slice(0, 4)) - 20}-01-01`
 import { getImage, formatMoney } from '../composable/donor.js'
 
 const router    = useRouter()

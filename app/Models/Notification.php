@@ -56,6 +56,8 @@ class Notification extends Model
                 ? '/donor/foundations/' . $updateFoundationIds[$this->notifiable_id]
                 : null,
             'donation_received', 'donation_cancelled' => '/donor/donations?highlight=' . $this->notifiable_id,
+            // opens the donation's details right away, where the donor can answer
+            'pickup_scheduled' => '/donor/donations?highlight=' . $this->notifiable_id . '&open=1',
             default => null,
         };
     }

@@ -15,7 +15,13 @@
       <div class="cc-body">
         <div class="cc-foundation-row">
           <span class="cc-foundation-dot" />
-          <span class="cc-foundation">{{ campaign.foundation?.name }}</span>
+          <router-link
+            v-if="campaign.foundation?.id"
+            :to="`/donor/foundations/${campaign.foundation.id}`"
+            class="cc-foundation cc-foundation-link"
+            :title="`Open ${campaign.foundation.name}`"
+          >{{ campaign.foundation.name }} ›</router-link>
+          <span v-else class="cc-foundation">{{ campaign.foundation?.name }}</span>
         </div>
   
         <h3 class="cc-title" @click="$emit('view-details', campaign)">{{ campaign.title }}</h3>
@@ -130,6 +136,8 @@
   .cc-foundation-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
   .cc-foundation-dot { width: 5px; height: 5px; border-radius: 50%; background: #1a8a52; flex-shrink: 0; }
   .cc-foundation { font-size: 0.72rem; color: #1a8a52; font-weight: 700; }
+  .cc-foundation-link { text-decoration: none; }
+  .cc-foundation-link:hover { text-decoration: underline; }
   
   .cc-title { font-size: 0.95rem; font-weight: 900; color: #0F2D52; margin: 0 0 6px; cursor: pointer; }
   .cc-title:hover { text-decoration: underline; }

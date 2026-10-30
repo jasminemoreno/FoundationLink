@@ -37,7 +37,7 @@ const sections = [
   {
     heading: '8. Contact',
     body: 'Questions about this Privacy Policy can be sent to',
-    link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' }
+    link: { text: 'foundationlink.support@gmail.com', href: 'mailto:foundationlink.support@gmail.com' }
   },
 ]
 </script>

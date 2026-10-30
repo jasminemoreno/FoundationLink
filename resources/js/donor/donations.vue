@@ -94,20 +94,19 @@
               <td class="date-cell">{{ formatDate(d.donated_at) }}</td>
               <td>
                 <span class="status-badge" :class="d.status"><span class="status-dot"></span>{{ statusLabel(d.status) }}</span>
-                <button
-                  v-if="canCancel(d)"
-                  type="button"
-                  class="cancel-link"
-                  @click="askCancel(d)"
-                >
-                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                  Cancel donation
-                </button>
+                <span v-if="d.status === 'pending' && d.pickup_schedule" class="pickup-hint" :class="{ todo: !d.pickup_schedule.confirmed && !d.pickup_schedule.request }">
+                  📅 Pick-up {{ d.pickup_schedule.label.split(' · ')[0] }}{{ d.pickup_schedule.confirmed ? ' · confirmed' : d.pickup_schedule.request ? ' · new day asked' : ' · please confirm' }}
+                </span>
+                <span v-else-if="canCancel(d)" class="cancel-hint">You can cancel this</span>
+                <span v-else-if="d.thank_you_note" class="thanks-hint">💌 Thank-you note</span>
               </td>
               <td class="view-cell">
-                <button type="button" class="view-btn" @click="openDetails(d)">View</button>
+                <button type="button" class="view-btn" @click="openDetails(d)">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  View
+                </button>
               </td>
             </tr>
           </tbody>
@@ -132,14 +131,87 @@
           <span class="detail-note">{{ statusNote(detailTarget.status) }}</span>
         </div>
 
+        <!-- thank-you note from the foundation -->
+        <!-- pick-up schedule from the foundation -->
+        <div
+          v-if="detailTarget.type === 'item' && detailTarget.delivery_method === 'pickup' && detailTarget.status === 'pending'"
+          class="pickup-box"
+        >
+          <span class="pickup-title">📅 Pick-up schedule</span>
+          <template v-if="detailTarget.pickup_schedule">
+            <div class="pickup-when">{{ detailTarget.pickup_schedule.label }}</div>
+            <p v-if="detailTarget.pickup_schedule.note" class="pickup-note">“{{ detailTarget.pickup_schedule.note }}”</p>
+
+            <p v-if="pickupMsg" class="pickup-msg">✓ {{ pickupMsg }}</p>
+
+            <!-- ask for another day -->
+            <div v-if="askingDay" class="pickup-ask">
+              <div class="pickup-label">Which day works for you?</div>
+              <CalendarPicker
+                v-model="dayForm.date"
+                class="pickup-calendar"
+                :min="nextDays[0].value"
+                :max="lastAskDay"
+                :marked="detailTarget.pickup_schedule.date"
+                marked-label="Foundation's day"
+              />
+              <div class="pickup-label">What time?</div>
+              <div class="pickup-chips">
+                <button type="button" class="pickup-chip" :class="{ active: dayForm.window === 'morning' }" @click="dayForm.window = 'morning'">Morning (8 AM–12 NN)</button>
+                <button type="button" class="pickup-chip" :class="{ active: dayForm.window === 'afternoon' }" @click="dayForm.window = 'afternoon'">Afternoon (1–5 PM)</button>
+              </div>
+              <textarea v-model="dayForm.note" class="pickup-textarea" maxlength="300" rows="2" placeholder="Optional note, e.g. I'm at work on Saturday."></textarea>
+              <p v-if="pickupError" class="pickup-error">{{ pickupError }}</p>
+              <div class="pickup-actions">
+                <button type="button" class="btn-keep" :disabled="pickupBusy" @click="askingDay = false">Back</button>
+                <button type="button" class="pickup-btn" :disabled="pickupBusy" @click="askAnotherDay">
+                  {{ pickupBusy ? 'Sending…' : 'Send to foundation' }}
+                </button>
+              </div>
+            </div>
+
+            <template v-else>
+              <p v-if="detailTarget.pickup_schedule.request" class="pickup-state warn">
+                You asked for <strong>{{ detailTarget.pickup_schedule.request.label }}</strong>. Waiting for the foundation to set the new day.
+              </p>
+              <p v-else-if="detailTarget.pickup_schedule.confirmed" class="pickup-state ok">✓ You confirmed this day. See you then!</p>
+              <p v-if="pickupError" class="pickup-error">{{ pickupError }}</p>
+              <div class="pickup-actions">
+                <button
+                  v-if="!detailTarget.pickup_schedule.confirmed"
+                  type="button" class="pickup-btn" :disabled="pickupBusy" @click="confirmPickup"
+                >{{ pickupBusy ? 'Saving…' : "✓ I'll be there" }}</button>
+                <button type="button" class="pickup-btn-outline" :disabled="pickupBusy" @click="startAskDay">Ask for another day</button>
+              </div>
+            </template>
+          </template>
+          <p v-else class="pickup-note plain">The foundation will set a pick-up day soon. You'll get a notification.</p>
+        </div>
+
+        <div v-if="detailTarget.thank_you_note" class="thanks-box">
+          <span class="thanks-title">💌 A note from {{ detailTarget.campaign?.foundation || 'the foundation' }}</span>
+          <p class="thanks-text">“{{ detailTarget.thank_you_note }}”</p>
+        </div>
+
         <div class="detail-list">
+          <div v-if="detailTarget.reference" class="detail-row">
+            <span class="detail-label">Reference</span>
+            <span class="detail-value">{{ detailTarget.reference }}</span>
+          </div>
           <div class="detail-row">
             <span class="detail-label">Campaign</span>
             <span class="detail-value">{{ detailTarget.campaign?.title }}</span>
           </div>
           <div v-if="detailTarget.campaign?.foundation" class="detail-row">
             <span class="detail-label">Foundation</span>
-            <span class="detail-value">{{ detailTarget.campaign.foundation }}</span>
+            <span class="detail-value">
+              <router-link
+                v-if="detailTarget.campaign.foundation_id"
+                :to="`/donor/foundations/${detailTarget.campaign.foundation_id}`"
+                class="detail-link"
+              >{{ detailTarget.campaign.foundation }}</router-link>
+              <template v-else>{{ detailTarget.campaign.foundation }}</template>
+            </span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Type</span>
@@ -150,6 +222,10 @@
             <div class="detail-row">
               <span class="detail-label">Amount</span>
               <span class="detail-value amount">₱{{ formatMoney(detailTarget.amount) }}</span>
+            </div>
+            <div v-if="detailTarget.payment_method" class="detail-row">
+              <span class="detail-label">Paid via</span>
+              <span class="detail-value">{{ detailTarget.payment_method }}</span>
             </div>
           </template>
 
@@ -170,9 +246,26 @@
               <span class="detail-label">Delivery</span>
               <span class="detail-value">{{ deliveryLabel(detailTarget.delivery_method) }}</span>
             </div>
-            <div v-if="detailTarget.delivery_address" class="detail-row">
-              <span class="detail-label">Address</span>
-              <span class="detail-value">{{ detailTarget.delivery_address }}</span>
+            <div v-if="detailTarget.delivery_method === 'pickup' && detailTarget.delivery_address" class="detail-row">
+              <span class="detail-label">Pick-up address</span>
+              <span class="detail-value">
+                {{ detailTarget.delivery_address }}
+                <a
+                  v-if="detailTarget.pickup_latitude !== null && detailTarget.pickup_latitude !== undefined"
+                  :href="mapsPointUrl(detailTarget.pickup_latitude, detailTarget.pickup_longitude)"
+                  target="_blank" rel="noopener" class="detail-link map-link"
+                >📍 Exact location shared · view on map</a>
+              </span>
+            </div>
+            <div v-if="detailTarget.delivery_method === 'dropoff' && detailTarget.campaign?.foundation_address" class="detail-row">
+              <span class="detail-label">Drop off at</span>
+              <span class="detail-value">
+                {{ detailTarget.campaign.foundation_address }}
+                <a
+                  :href="mapsDirectionsUrl({ address: detailTarget.campaign.foundation_address })"
+                  target="_blank" rel="noopener" class="detail-link map-link"
+                >Get directions to the foundation ›</a>
+              </span>
             </div>
           </template>
 
@@ -211,6 +304,18 @@
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
             Cancel donation
+          </button>
+          <button
+            v-if="detailTarget.status === 'received'"
+            type="button"
+            class="receipt-btn"
+            :disabled="downloadingReceipt"
+            @click="downloadReceipt(detailTarget)"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            {{ downloadingReceipt ? 'Preparing…' : 'Download receipt' }}
           </button>
           <button type="button" class="btn-keep" @click="closeDetails">Close</button>
         </div>
@@ -255,6 +360,8 @@ import EmptyState from '../components/donor/Emptystate.vue'
 import FoundationBubble from '../components/donor/Foundationbubble.vue'
 import StatCard from '../components/donor/Statcard.vue'
 import { formatMoney, formatDate, getImage } from '../composable/donor.js'
+import { mapsDirectionsUrl, mapsPointUrl } from '../composable/maps.js'
+import CalendarPicker from '../components/CalendarPicker.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -273,7 +380,8 @@ const cancelling   = ref(false)
 const cancelError  = ref('')
 
 /* ── DONATION DETAILS ── */
-const detailTarget = ref(null)
+const detailTarget       = ref(null)
+const downloadingReceipt = ref(false)
 
 const tabs = [
   { key: 'all',       label: 'All'       },
@@ -318,9 +426,12 @@ async function locateHighlight() {
   const el = document.querySelector(`[data-donation-id="${highlightId.value}"]`)
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
+  // coming from "My Recent Donations": show its details right away
+  if (target && route.query.open) openDetails(target)
+
   setTimeout(() => {
     highlightId.value = null
-    router.replace({ query: { ...route.query, highlight: undefined } })
+    router.replace({ query: { ...route.query, highlight: undefined, open: undefined } })
   }, 2500)
 }
 
@@ -366,6 +477,86 @@ function statusLabel(s) {
 /* ── DONATION DETAILS ── */
 function openDetails(d) {
   detailTarget.value = d
+  askingDay.value = false
+  pickupError.value = ''
+  pickupMsg.value = ''
+}
+
+/* ── PICK-UP SCHEDULE: donor's answer ── */
+const askingDay   = ref(false)
+const dayForm     = ref({ date: '', window: 'morning', note: '' })
+const pickupBusy  = ref(false)
+const pickupError = ref('')
+const pickupMsg   = ref('')
+
+// Next 7 Philippine calendar days as chips: Today, Tomorrow, Mon, Nov 2 …
+const nextDays = computed(() => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(`${today}T00:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + i)
+    const label = i === 0 ? 'Today' : i === 1 ? 'Tomorrow'
+      : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+    return { value: d.toISOString().slice(0, 10), label }
+  })
+})
+
+// the server accepts up to 90 days ahead
+const lastAskDay = computed(() => {
+  const d = new Date(`${nextDays.value[0].value}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 90)
+  return d.toISOString().slice(0, 10)
+})
+
+function applySchedule(d, schedule) {
+  d.pickup_schedule = schedule
+  const row = donations.value.find(x => x.id === d.id)
+  if (row && row !== d) row.pickup_schedule = schedule
+}
+
+function startAskDay() {
+  const s = detailTarget.value?.pickup_schedule
+  dayForm.value = { date: nextDays.value[1].value, window: s?.window === 'afternoon' ? 'afternoon' : 'morning', note: '' }
+  pickupError.value = ''
+  pickupMsg.value = ''
+  askingDay.value = true
+}
+
+async function confirmPickup() {
+  const d = detailTarget.value
+  pickupBusy.value = true
+  pickupError.value = ''
+  try {
+    const { data } = await api.post(`/donor/donations/${d.id}/pickup/confirm`)
+    applySchedule(d, data.pickup_schedule)
+    pickupMsg.value = data.message
+  } catch (err) {
+    pickupError.value = err.response?.data?.message || 'Could not save. Please try again.'
+  } finally {
+    pickupBusy.value = false
+  }
+}
+
+async function askAnotherDay() {
+  const d = detailTarget.value
+  if (!dayForm.value.date) { pickupError.value = 'Please choose a day.'; return }
+  pickupBusy.value = true
+  pickupError.value = ''
+  try {
+    const { data } = await api.post(`/donor/donations/${d.id}/pickup/reschedule`, {
+      date: dayForm.value.date,
+      window: dayForm.value.window,
+      note: dayForm.value.note.trim() || null,
+    })
+    applySchedule(d, data.pickup_schedule)
+    askingDay.value = false
+    pickupMsg.value = data.message
+  } catch (err) {
+    const errors = err.response?.data?.errors
+    pickupError.value = errors ? Object.values(errors).flat().join(' ') : (err.response?.data?.message || 'Could not send. Please try again.')
+  } finally {
+    pickupBusy.value = false
+  }
 }
 
 function closeDetails() {
@@ -388,6 +579,130 @@ function statusNote(s) {
     received:  'The foundation confirmed receiving this donation.',
     cancelled: 'This donation was cancelled.',
   }[s] || ''
+}
+
+/* ── ACKNOWLEDGMENT RECEIPT (PDF) ──
+   Only for donations the foundation marked as received.
+   jsPDF's built-in fonts only know basic Latin letters, so ₱ becomes "PHP "
+   and anything else they can't draw (emoji, curly quotes) is dropped. */
+function pdfText(v) {
+  return String(v ?? '')
+    .replace(/₱/g, 'PHP ')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/[^\x20-\x7E -ÿ\n]/g, '')
+    .trim()
+}
+
+function currentDonorName() {
+  try {
+    const u = JSON.parse(sessionStorage.getItem('user') || 'null')
+    return [u?.first_name, u?.last_name].filter(Boolean).join(' ')
+  } catch { return '' }
+}
+
+async function downloadReceipt(d) {
+  if (downloadingReceipt.value || !d) return
+  downloadingReceipt.value = true
+
+  try {
+    // UMD build (same approach as the foundation report export)
+    const mod   = await import('jspdf/dist/jspdf.umd.min.js')
+    const JsPDF = mod.jsPDF || mod.default?.jsPDF || mod.default
+    const doc   = new JsPDF({ unit: 'mm', format: 'a4' })
+
+    const M     = 18
+    const CW    = 210 - M * 2
+    const NAVY  = [15, 45, 82]
+    const GREEN = [14, 92, 54]
+    const GRAY  = [100, 116, 139]
+    const BODY  = [30, 41, 59]
+    const LINE  = [226, 232, 240]
+
+    // header band
+    doc.setFillColor(...NAVY)
+    doc.rect(0, 0, 210, 40, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(20)
+    doc.text('FoundationLink', M, 18)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
+    doc.text('Donation Acknowledgment Receipt', M, 27)
+    doc.setFontSize(9)
+    doc.text('Reference', 210 - M, 16, { align: 'right' })
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13)
+    doc.text(pdfText(d.reference || `#${d.id}`), 210 - M, 24, { align: 'right' })
+
+    let y = 56
+    doc.setTextColor(...GRAY)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10)
+    doc.text('Received with thanks from', M, y)
+    y += 8
+    doc.setTextColor(...NAVY)
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16)
+    doc.text(pdfText(currentDonorName()) || 'Donor', M, y)
+    y += 12
+
+    const rows = [
+      ['Campaign',   d.campaign?.title],
+      ['Foundation', d.campaign?.foundation],
+      ['Type',       d.type === 'monetary' ? 'Monetary donation' : 'Item donation'],
+    ]
+    if (d.type === 'monetary') {
+      rows.push(['Amount', 'PHP ' + formatMoney(d.amount)])
+      if (d.payment_method) rows.push(['Paid via', d.payment_method])
+    } else {
+      rows.push(['Item', `${d.item_name} x ${d.item_quantity}`])
+      if (d.delivery_method) rows.push(['Delivery', deliveryLabel(d.delivery_method)])
+    }
+    rows.push(['Date donated', formatDate(d.donated_at)])
+    rows.push(['Status', 'Received by the foundation'])
+
+    doc.setFontSize(10.5)
+    for (const [label, value] of rows) {
+      const lines = doc.splitTextToSize(pdfText(value) || '-', CW - 50)
+      doc.setTextColor(...GRAY); doc.setFont('helvetica', 'normal')
+      doc.text(label, M, y)
+      doc.setTextColor(...BODY); doc.setFont('helvetica', 'bold')
+      doc.text(lines, M + 50, y)
+      y += lines.length * 5.5 + 3
+      doc.setDrawColor(...LINE)
+      doc.line(M, y - 2, M + CW, y - 2)
+      y += 4
+    }
+
+    if (d.thank_you_note) {
+      const note  = doc.splitTextToSize(`"${pdfText(d.thank_you_note)}"`, CW - 12)
+      const boxH  = note.length * 5.5 + 16
+      y += 4
+      doc.setFillColor(236, 253, 245)
+      doc.setDrawColor(167, 243, 208)
+      doc.roundedRect(M, y, CW, boxH, 3, 3, 'FD')
+      doc.setTextColor(...GREEN)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10)
+      doc.text(`A note from ${pdfText(d.campaign?.foundation) || 'the foundation'}`, M + 6, y + 8)
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(10.5)
+      doc.setTextColor(...BODY)
+      doc.text(note, M + 6, y + 15)
+      y += boxH + 8
+    }
+
+    // footer
+    doc.setTextColor(...GRAY)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5)
+    const footer = doc.splitTextToSize(
+      `This acknowledgment confirms that ${pdfText(d.campaign?.foundation) || 'the foundation'} marked this donation as received in FoundationLink. ` +
+      'It is not an official tax receipt.',
+      CW
+    )
+    doc.text(footer, M, 275)
+    doc.text(`Issued on ${formatDate(new Date())}`, M, 275 + footer.length * 4.2 + 2)
+
+    doc.save(`FoundationLink-receipt-${d.reference || d.id}.pdf`)
+  } catch (err) {
+    console.error(err)
+    alert('Could not create the receipt. Please try again.')
+  } finally {
+    downloadingReceipt.value = false
+  }
 }
 
 /* ── CANCEL ITEM DONATION ──
@@ -578,8 +893,71 @@ tbody td { padding: 16px 20px; font-size: 0.86rem; color: #475569; }
 .detail-photo { margin-top: 16px; }
 .detail-photo img { display: block; margin-top: 8px; max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid #e2e8f0; object-fit: cover; }
 
-.detail-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 20px; }
-.detail-cancel { margin-top: 0; }
+.detail-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.detail-cancel { margin-top: 0; margin-right: auto; }
+.detail-link { color: #1a8a52; text-decoration: none; font-weight: 700; }
+.detail-link:hover { text-decoration: underline; }
+.map-link { display: block; margin-top: 4px; font-size: 0.78rem; }
+
+/* list hints (cancel lives inside the details window) */
+.cancel-hint, .thanks-hint { display: block; margin-top: 6px; font-size: 0.72rem; font-weight: 650; }
+.cancel-hint { color: #b45309; }
+.pickup-hint { display: block; margin-top: 6px; font-size: 0.72rem; font-weight: 700; color: #1a8a52; }
+.pickup-hint.todo { color: #b45309; }
+
+/* pick-up schedule (details) */
+.pickup-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+.pickup-title { display: block; font-size: 0.76rem; font-weight: 800; color: #1e40af; }
+.pickup-when { margin-top: 4px; font-size: 0.98rem; font-weight: 800; color: #0F2D52; }
+.pickup-note { margin: 4px 0 0; font-size: 0.82rem; color: #475569; font-style: italic; }
+.pickup-note.plain { font-style: normal; }
+.pickup-msg { margin: 8px 0 0; font-size: 0.8rem; font-weight: 700; color: #059669; }
+.pickup-state { margin: 8px 0 0; font-size: 0.82rem; line-height: 1.5; }
+.pickup-state.ok { color: #059669; font-weight: 700; }
+.pickup-state.warn { color: #b45309; }
+.pickup-error { margin: 8px 0 0; font-size: 0.8rem; color: #dc2626; }
+.pickup-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pickup-btn, .pickup-btn-outline {
+  padding: 9px 14px; border-radius: 10px; font-size: 0.82rem; font-weight: 750; font-family: inherit; cursor: pointer;
+}
+.pickup-btn { border: none; background: #1a8a52; color: #fff; }
+.pickup-btn:hover:not(:disabled) { background: #0e5c36; }
+.pickup-btn-outline { border: 1.5px solid #bfdbfe; background: #fff; color: #1e40af; }
+.pickup-btn-outline:hover:not(:disabled) { background: #dbeafe; }
+.pickup-btn:disabled, .pickup-btn-outline:disabled { opacity: 0.65; cursor: not-allowed; }
+.pickup-ask { margin-top: 10px; }
+.pickup-calendar { margin-bottom: 12px; }
+.pickup-label { font-size: 0.78rem; font-weight: 700; color: #0F2D52; margin-bottom: 6px; }
+.pickup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.pickup-chip {
+  padding: 6px 11px; border-radius: 20px; border: 1.5px solid #cbd5e1; background: #fff;
+  font-size: 0.76rem; font-weight: 650; color: #475569; font-family: inherit; cursor: pointer;
+}
+.pickup-chip.active { border-color: #1a8a52; background: #f0fdf4; color: #0e5c36; }
+.pickup-textarea {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 10px; border: 1.5px solid #e2e8f0;
+  font-size: 0.82rem; font-family: inherit; resize: vertical;
+}
+.pickup-textarea:focus { outline: none; border-color: #1a8a52; }
+.thanks-hint { color: #1a8a52; }
+.view-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* thank-you note */
+.thanks-box {
+  background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.thanks-title { display: block; font-size: 0.76rem; font-weight: 800; color: #0e5c36; margin-bottom: 4px; }
+.thanks-text { margin: 0; font-size: 0.88rem; color: #1e293b; font-style: italic; line-height: 1.55; white-space: pre-line; }
+
+.receipt-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border: none; border-radius: 10px;
+  background: #1a8a52; color: white;
+  font-size: 0.85rem; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.receipt-btn:hover:not(:disabled) { background: #0e5c36; }
+.receipt-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 
 @media (max-width: 700px) {
   .stats-row { grid-template-columns: 1fr; }

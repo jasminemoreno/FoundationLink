@@ -23,7 +23,14 @@
           <h2 class="details-title">{{ campaign.title }}</h2>
           <div class="details-foundation">
             <span class="details-foundation-dot" />
-            {{ campaign.foundation?.name }}
+            <router-link
+              v-if="linkFoundation && campaign.foundation?.id"
+              :to="`/donor/foundations/${campaign.foundation.id}`"
+              class="details-foundation-link"
+              :title="`Open ${campaign.foundation.name}`"
+              @click="$emit('close')"
+            >{{ campaign.foundation.name }} ›</router-link>
+            <template v-else>{{ campaign.foundation?.name }}</template>
           </div>
         </div>
   
@@ -117,7 +124,11 @@
   <script setup>
   import { computed } from 'vue'
   
-  const props = defineProps({ campaign: Object })
+  const props = defineProps({
+    campaign: Object,
+    // false on the foundation's own page (the link would lead back to it)
+    linkFoundation: { type: Boolean, default: true },
+  })
   defineEmits(['close', 'donate'])
   
   const percent = computed(() => {
@@ -165,6 +176,8 @@
   .details-title { font-size: 1.1rem; font-weight: 900; color: #0F2D52; margin: 0 0 6px; }
   .details-foundation { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: #1a8a52; font-weight: 700; }
   .details-foundation-dot { width: 5px; height: 5px; border-radius: 50%; background: #1a8a52; }
+  .details-foundation-link { color: inherit; text-decoration: underline; }
+  .details-foundation-link:hover { color: #0e5c36; }
   
   .details-status-row { margin-bottom: 16px; }
   .status-chip { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; }

@@ -63,7 +63,11 @@ class CampaignController extends Controller
             'type' => 'required|in:monetary,item,both',
             'goal_amount' => 'nullable|numeric|min:0',
             'start_date' => 'sometimes|nullable|date',
-            'end_date' => 'sometimes|nullable|date',
+            // a campaign can't end before it starts
+            'end_date' => array_merge(
+                ['sometimes', 'nullable', 'date'],
+                $request->filled('start_date') ? ['after_or_equal:start_date'] : []
+            ),
             'cover_photo' => 'sometimes|nullable|image|max:4096',
             'photos.*' => 'sometimes|nullable|image|max:4096',
             'captions.*' => 'sometimes|nullable|string|max:255',
@@ -149,7 +153,15 @@ class CampaignController extends Controller
             'type' => 'sometimes|in:monetary,item,both',
             'goal_amount' => 'nullable|numeric|min:0',
             'start_date' => 'sometimes|nullable|date',
-            'end_date' => 'sometimes|nullable|date',
+            // can't end before it starts: the new start date if sent, else the saved one
+            'end_date' => array_merge(
+                ['sometimes', 'nullable', 'date'],
+                $request->filled('start_date')
+                    ? ['after_or_equal:start_date']
+                    : ($request->has('start_date') || !$campaign->start_date
+                        ? []
+                        : ['after_or_equal:' . $campaign->start_date->toDateString()])
+            ),
             // No 'status' here: status only changes via pause / resume / complete,
             // which enforce the allowed transitions.
             'cover_photo' => 'sometimes|nullable|image|max:4096',

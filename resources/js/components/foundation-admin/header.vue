@@ -226,8 +226,13 @@ function toggleNotifs() {
 function getNotifLink(n) {
   switch (n.type) {
     case 'donation_received':
+    case 'donation_cancelled':
       // NOTE: route is registered singular ('donation'), not 'donations'
       return '/foundation/donation'
+    case 'pickup_confirmed':
+    case 'pickup_reschedule_requested':
+      // opens that donation's details (with the pick-up schedule)
+      return n.notifiable_id ? `/foundation/donation?view=${n.notifiable_id}` : '/foundation/donation'
     case 'campaign_update':
       return n.notifiable_id ? `/foundation/campaigns/${n.notifiable_id}` : '/foundation/campaigns'
     case 'foundation_verified':

@@ -13,8 +13,8 @@
           <div class="contact-icon">📧</div>
           <h3>Email Support</h3>
           <p>The fastest way to reach our team. We aim to respond within 1-2 business days.</p>
-          <a href="mailto:jmoreno4@ssct.edu.ph" class="btn-contact">
-            jmoreno4@ssct.edu.ph
+          <a href="mailto:foundationlink.support@gmail.com" class="btn-contact">
+            foundationlink.support@gmail.com
           </a>
         </div>
 

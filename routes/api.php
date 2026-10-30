@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-attempts');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login-flood');
 Route::post('/register/donor', [AuthController::class, 'registerDonor']);
 Route::post('/foundation-admin/register', [AuthController::class, 'registerFoundation']);
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -140,7 +140,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/campaigns/{id}/updates/{updateId}', [CampaignUpdateController::class, 'destroy']);
         Route::get('/donations', [DonationController::class, 'index']);
         Route::patch('/donations/{id}/status', [DonationController::class, 'updateStatus']);
+        Route::patch('/donations/{id}/pickup-schedule', [DonationController::class, 'schedulePickup']);
         Route::get('/donors', [DonationController::class, 'donors']);
+        Route::get('/followers', [DonationController::class, 'followers']);
         Route::get('/reports', [DonationController::class, 'reports']);
         Route::get('/settings', [FoundationController::class, 'settings']);
         Route::post('/settings', [FoundationController::class, 'updateSettings']);
@@ -179,7 +181,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/campaigns/{id}/updates', [CampaignUpdateController::class, 'donorIndex']);
         Route::post('/donate', [DonorController::class, 'donate']);
         Route::get('/donations', [DonorController::class, 'myDonations']);
+        Route::get('/donations/{id}', [DonorController::class, 'donationDetail'])->whereNumber('id');
         Route::patch('/donations/{id}/cancel', [DonorController::class, 'cancelItemDonation']);
+        // pick-up schedule answers: "I'll be there" / "Ask for another day"
+        Route::post('/donations/{id}/pickup/confirm', [DonorController::class, 'confirmPickup'])->whereNumber('id');
+        Route::post('/donations/{id}/pickup/reschedule', [DonorController::class, 'requestPickupDay'])->whereNumber('id');
         Route::get('/notifications', [DonorController::class, 'notifications']);
         Route::get('/notifications/count', [DonorController::class, 'notificationsCount']);
         Route::post('/notifications/seen', [DonorController::class, 'markNotificationsSeen']);

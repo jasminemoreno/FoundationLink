@@ -276,6 +276,7 @@
     <CampaignDetailsModal
       v-if="detailsTarget"
       :campaign="detailsTarget"
+      :link-foundation="false"
       @close="detailsTarget = null"
       @donate="onDonateFromDetails"
     />

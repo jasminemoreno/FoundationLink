@@ -86,6 +86,7 @@ const unreadCount = computed(() => notifications.value.filter(n => !n.read).leng
 const NOTIF_ICONS = {
   donation_received:  '✅',
   donation_cancelled: '❌',
+  pickup_scheduled:   '📅',
   campaign_update:    '📰',
   new_campaign:       '📢',
   campaign_promotion: '⭐',
@@ -192,6 +193,7 @@ async function clearAll() {
 /* the server's notification types (same colors as the mobile app) */
 .notif-icon.donation_received  { background: #f0fdf4; }
 .notif-icon.donation_cancelled { background: #fef2f2; }
+.notif-icon.pickup_scheduled   { background: #eff6ff; }
 .notif-icon.campaign_update    { background: #f0f9ff; }
 .notif-icon.new_campaign       { background: #eff6ff; }
 .notif-icon.campaign_promotion { background: #fffbeb; }

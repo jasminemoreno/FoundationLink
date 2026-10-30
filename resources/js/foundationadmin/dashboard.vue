@@ -69,7 +69,9 @@
       <!-- FOUNDATION HEADER -->
       <div class="foundation-header">
         <div class="foundation-info">
-          <AvatarInitials :initials="foundationInitials" :seed="foundation?.id ?? 0" :size="48" />
+          <!-- the uploaded logo (same as the sidebar), or initials when there is none -->
+          <img v-if="foundation?.logo" :src="`/storage/${foundation.logo}`" :alt="`${foundation.name} logo`" class="foundation-logo" />
+          <AvatarInitials v-else :initials="foundationInitials" :seed="foundation?.id ?? 0" :size="48" />
           <div>
             <h2 class="foundation-name">{{ foundation?.name }}</h2>
             <p class="foundation-cat">{{ foundation?.category?.name || 'No Category' }}</p>
@@ -472,6 +474,7 @@ a.resubmit-btn { display: inline-block; text-decoration: none; }
 /* FOUNDATION HEADER */
 .foundation-header { display: flex; justify-content: space-between; align-items: center; background: white; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(30,58,138,0.06); }
 .foundation-info   { display: flex; align-items: center; gap: 14px; }
+.foundation-logo   { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--fa-border, #e2e8f0); background: #fff; }
 .foundation-name   { font-size: 1rem; font-weight: 700; color: var(--fa-heading); margin: 0 0 3px; }
 .foundation-cat    { font-size: 0.8rem; color: var(--fa-muted); margin: 0; }
 .verified-badge    { font-size: 0.8rem; font-weight: 700; background: #f0fdf4; color: var(--fa-success); padding: 6px 14px; border-radius: 20px; border: 1px solid #bbf7d0; }

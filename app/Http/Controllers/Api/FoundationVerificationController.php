@@ -101,17 +101,20 @@ class FoundationVerificationController extends Controller
             }
         }
 
-        // Sign-up is finished: retire the temporary registration token.
-        // A normal login token is left alone.
+        // Sign-up is finished: retire the temporary registration token and log
+        // the new admin in, so they go straight to their dashboard.
+        // A normal login token (an admin resubmitting) is left alone.
         $token = $request->user()->currentAccessToken();
+        $loginToken = null;
         if ($token instanceof PersonalAccessToken && $token->name === AuthController::REGISTRATION_TOKEN_NAME) {
             $token->delete();
+            $loginToken = $request->user()->createToken('auth_token')->plainTextToken;
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Verification submitted successfully.',
-            'foundation_status' => $foundation->status
-        ], 200);
+            'foundation_status' => $foundation->status,
+        ] + ($loginToken ? ['token' => $loginToken, 'user' => $request->user()->fresh()] : []), 200);
     }
 }

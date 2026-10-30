@@ -26,7 +26,7 @@ class DonorController extends Controller
     public function dashboard()
     {
         $donor = auth()->user();
-        $donations = Donation::with('campaign')
+        $donations = Donation::with(['campaign.foundation', 'paymentMethod'])
             ->where('donor_id', $donor->id)
             ->latest()->get();
 
@@ -129,6 +129,10 @@ class DonorController extends Controller
             'item_photo' => 'nullable|image|max:4096',
             'delivery_method' => 'nullable|in:pickup,dropoff',
             'delivery_address' => 'nullable|string|max:500',
+            // optional exact pick-up spot from the phone's GPS (both or neither)
+            'pickup_latitude' => 'nullable|numeric|between:-90,90|required_with:pickup_longitude',
+            'pickup_longitude' => 'nullable|numeric|between:-180,180|required_with:pickup_latitude',
+            'pickup_accuracy' => 'nullable|numeric|min:0|max:100000',
             'notes' => 'nullable|string|max:500',
         ]);
 
@@ -209,6 +213,9 @@ class DonorController extends Controller
         }
 
         if (in_array($request->type, ['item', 'both'])) {
+            // The location only means something for Pick Up (the foundation goes to the donor)
+            $isPickup = $request->delivery_method === 'pickup' && $request->filled('pickup_latitude');
+
             $donation = Donation::create([
                 'campaign_id' => $campaign->id,
                 'donor_id' => $donor->id,
@@ -219,6 +226,10 @@ class DonorController extends Controller
                 'item_photo' => $itemPhotoPath,
                 'delivery_method' => $request->delivery_method,
                 'delivery_address' => $request->delivery_address ?? null,
+                'pickup_latitude' => $isPickup ? $request->pickup_latitude : null,
+                'pickup_longitude' => $isPickup ? $request->pickup_longitude : null,
+                'pickup_accuracy' => $isPickup && $request->filled('pickup_accuracy')
+                    ? (int) round($request->pickup_accuracy) : null,
                 'notes' => $request->notes ?? null,
                 'status' => 'pending',
                 'donated_at' => $now,
@@ -325,16 +336,137 @@ class DonorController extends Controller
     }
 
     /* ══════════════════════════════
+       PICK-UP SCHEDULE: DONOR'S ANSWER
+       "I'll be there" (confirm) or "Ask for another day" (reschedule).
+       Only the donor's own pending pick-up donation that has a schedule.
+    ══════════════════════════════ */
+    public function confirmPickup($id)
+    {
+        $donation = $this->scheduledPickupOfDonor($id);
+        if ($donation instanceof \Illuminate\Http\JsonResponse) {
+            return $donation;
+        }
+
+        $donation->update([
+            'pickup_confirmed_at' => now(),
+            'pickup_request_date' => null,
+            'pickup_request_window' => null,
+            'pickup_request_note' => null,
+        ]);
+
+        $label = $donation->pickupSchedule()['label'];
+        $this->notifyFoundationAboutPickup(
+            $donation,
+            'pickup_confirmed',
+            'Pick-up confirmed',
+            "{$this->donorName()} confirmed the pick-up of {$donation->item_quantity}x {$donation->item_name} on {$label}."
+        );
+
+        return response()->json([
+            'message' => 'Thanks! The foundation knows you will be there.',
+            'pickup_schedule' => $donation->fresh()->pickupSchedule(),
+        ]);
+    }
+
+    public function requestPickupDay(Request $request, $id)
+    {
+        $today = now(config('app.display_timezone'));
+        $data = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . $today->toDateString(),
+                'before_or_equal:' . $today->copy()->addDays(90)->toDateString()],
+            'window' => 'required|in:morning,afternoon',
+            'note' => 'nullable|string|max:300',
+        ]);
+
+        $donation = $this->scheduledPickupOfDonor($id);
+        if ($donation instanceof \Illuminate\Http\JsonResponse) {
+            return $donation;
+        }
+
+        $note = trim((string) ($data['note'] ?? '')) ?: null;
+        $donation->update([
+            'pickup_confirmed_at' => null,
+            'pickup_request_date' => $data['date'],
+            'pickup_request_window' => $data['window'],
+            'pickup_request_note' => $note,
+        ]);
+
+        $label = Donation::pickupLabel($data['date'], $data['window']);
+        $this->notifyFoundationAboutPickup(
+            $donation,
+            'pickup_reschedule_requested',
+            'Donor asked for another pick-up day',
+            "{$this->donorName()} asked for another pick-up day: {$label}."
+                . ($note ? " Note: \"{$note}\"" : '')
+        );
+
+        return response()->json([
+            'message' => 'Sent! The foundation will set a new pick-up day.',
+            'pickup_schedule' => $donation->fresh()->pickupSchedule(),
+        ]);
+    }
+
+    /** The donor's own pending pick-up donation with a schedule, or a 422 explaining why not */
+    private function scheduledPickupOfDonor($id)
+    {
+        $donation = Donation::with('campaign.foundation')
+            ->where('donor_id', auth()->id())
+            ->findOrFail($id);
+
+        if ($donation->status !== 'pending' || $donation->delivery_method !== 'pickup') {
+            return response()->json(['message' => 'Only a pending pick-up can be answered.'], 422);
+        }
+        if (!$donation->pickup_date) {
+            return response()->json(['message' => 'The foundation has not set a pick-up day yet.'], 422);
+        }
+
+        return $donation;
+    }
+
+    private function donorName(): string
+    {
+        $donor = auth()->user();
+        return trim(($donor->first_name ?? '') . ' ' . ($donor->last_name ?? '')) ?: 'A donor';
+    }
+
+    private function notifyFoundationAboutPickup(Donation $donation, string $type, string $title, string $message): void
+    {
+        $adminId = $donation->campaign?->foundation?->user_id;
+        if (!$adminId) {
+            return;
+        }
+
+        Notification::create([
+            'user_id' => $adminId,
+            'type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'notifiable_id' => $donation->id,
+            'notifiable_type' => Donation::class,
+        ]);
+    }
+
+    /* ══════════════════════════════
        MY DONATIONS
     ══════════════════════════════ */
     public function myDonations()
     {
-        $donations = Donation::with('campaign.foundation')
+        $donations = Donation::with(['campaign.foundation', 'paymentMethod'])
             ->where('donor_id', auth()->id())
             ->latest()
             ->get();
 
         return response()->json($donations->map(fn($d) => $this->formatDonation($d)));
+    }
+
+    /** One of the donor's own donations (Donation Details). Someone else's is "not found". */
+    public function donationDetail($id)
+    {
+        $donation = Donation::with(['campaign.foundation', 'paymentMethod'])
+            ->where('donor_id', auth()->id())
+            ->findOrFail($id);
+
+        return response()->json($this->formatDonation($donation));
     }
 
     /* ══════════════════════════════
@@ -421,7 +553,7 @@ class DonorController extends Controller
             'phone' => Phone::profileRule($user),
             'address' => 'nullable|string',
             'gender' => 'nullable|in:male,female,prefer_not_to_say',
-            'birthdate' => 'nullable|date',
+            'birthdate' => 'nullable|date|before:today', // same as sign-up
             // Same rules as sign-up, and the current password is required to change it
             'current_password' => 'nullable|required_with:password|string',
             'password' => [
@@ -794,23 +926,41 @@ class DonorController extends Controller
     {
         return [
             'id' => $d->id,
+            // shown on Donation Details and the acknowledgment receipt
+            'reference' => sprintf('FL-%06d', $d->id),
             'type' => $d->type,
             'status' => $d->status,
             'amount' => $d->amount,
+            'payment_method' => $d->paymentMethod?->name,
             'item_name' => $d->item_name,
             'item_quantity' => $d->item_quantity,
             'item_description' => $d->item_description,
             'delivery_method' => $d->delivery_method,
             'delivery_address' => $d->delivery_address,
+            'pickup_latitude' => $d->pickup_latitude,
+            'pickup_longitude' => $d->pickup_longitude,
+            'pickup_accuracy' => $d->pickup_accuracy,
+            'pickup_schedule' => $d->pickupSchedule(),
             'notes' => $d->notes,
+            'thank_you_note' => $d->thank_you_note,
             'proof_photo' => $d->proof_photo,
             'item_photo' => $d->item_photo,
             'donated_at' => $d->donated_at ?? $d->created_at,
+            // when it was last received / cancelled (or changed)
+            'updated_at' => $d->updated_at,
             'campaign' => [
                 'id' => $d->campaign->id,
                 'title' => $d->campaign->title,
                 'type' => $d->campaign->type,
+                'cover_photo' => $d->campaign->cover_photo,
                 'foundation' => $d->campaign->foundation?->name,
+                'foundation_id' => $d->campaign->foundation?->id,
+                'foundation_logo' => $d->campaign->foundation?->logo,
+                // for "Get directions to the foundation" on drop-off donations
+                'foundation_address' => collect([
+                    $d->campaign->foundation?->street, $d->campaign->foundation?->barangay,
+                    $d->campaign->foundation?->city_municipality, $d->campaign->foundation?->province,
+                ])->filter()->implode(', '),
             ],
         ];
     }

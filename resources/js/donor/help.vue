@@ -160,7 +160,7 @@ const faqs = [
   { category: 'security', q: 'Is my personal information safe?', a: 'Yes. We take your privacy seriously. Your personal information is encrypted and never shared with third parties without your consent.' },
   { category: 'security', q: 'Are the foundations on FoundationLink verified?', a: 'Yes. All foundations go through a verification process by our administrators before they can create campaigns and receive donations.' },
   { category: 'security', q: 'How do I report a foundation, campaign, or account?', a: 'Email the platform administrator through Contact Support. Include the name of the foundation or account, the campaign involved, and what happened. The Superadmin reviews the report and can suspend the account if needed.' },
-  { category: 'security', q: 'What should I do if I notice suspicious activity?', a: 'Contact our support team immediately at jmoreno4@ssct.edu.ph. Change your password right away from your Profile page.' },
+  { category: 'security', q: 'What should I do if I notice suspicious activity?', a: 'Contact our support team immediately at foundationlink.support@gmail.com. Change your password right away from your Profile page.' },
 ]
 
 const filteredFaqs = computed(() => {

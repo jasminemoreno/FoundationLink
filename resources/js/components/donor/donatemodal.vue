@@ -199,17 +199,52 @@
           <div>
             <div class="address-label">Drop off at:</div>
             <div class="address-value">{{ foundationAddress }}</div>
+            <a
+              :href="mapsDirectionsUrl({ address: foundationAddress })"
+              target="_blank"
+              rel="noopener"
+              class="directions-link"
+            >Get directions to the foundation ›</a>
           </div>
         </div>
 
-        <!-- Pick Up: ask for donor's address -->
+        <!-- Pick Up: ask for donor's address (+ optional exact spot) -->
         <div v-if="form.delivery_method === 'pickup'" class="form-group" style="margin-top: 12px;">
           <label>Your Pick-up Address <span class="req">*</span></label>
-          <input
+          <textarea
             v-model="form.delivery_address"
-            type="text"
-            placeholder="Enter your full address for pick-up"
-          />
+            class="address-input"
+            rows="2"
+            placeholder="House no., street, barangay, landmark"
+          ></textarea>
+
+          <div class="location-row">
+            <button type="button" class="btn-location" :disabled="locating" @click="useMyLocation">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ locating ? 'Getting your location…' : hasLocation ? 'Update my location' : 'Use my current location' }}
+            </button>
+            <span class="location-hint">Optional · helps the foundation find you</span>
+          </div>
+
+          <div v-if="hasLocation" class="location-saved">
+            <span>✓ Exact location added<template v-if="form.pickup_accuracy"> (about {{ form.pickup_accuracy }} m)</template></span>
+            <a :href="mapsPointUrl(form.pickup_latitude, form.pickup_longitude)" target="_blank" rel="noopener">Check on map</a>
+            <button type="button" class="link-btn" @click="clearLocation">Remove</button>
+          </div>
+          <p v-if="hasLocation && addressFilled" class="location-filled">
+            ✓ Address filled in from the map. Please add your house number or a landmark.
+          </p>
+          <p v-if="hasLocation && addressFromMap" class="location-suggest">
+            From the map: <strong>{{ addressFromMap }}</strong>
+            <button type="button" class="link-btn use" @click="useMapAddress">Use this</button>
+          </p>
+          <p v-if="hasLocation && form.pickup_accuracy > 200" class="location-warn">
+            This spot may not be exact — computers guess it from Wi-Fi. Please make sure your typed address is complete.
+          </p>
+          <p v-if="locationError" class="location-error">{{ locationError }}</p>
+          <p class="location-privacy">Only this foundation can see your address and location.</p>
         </div>
       </div>
 
@@ -236,6 +271,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import api from '@/services/api'
+import { addressFromPoint, mapsDirectionsUrl, mapsPointUrl } from '../../composable/maps.js'
 
 const props = defineProps({ campaign: Object })
 const emit  = defineEmits(['close', 'donated'])
@@ -258,8 +294,75 @@ const form = reactive({
   item_photo:         null,
   delivery_method:    '',
   delivery_address:   '',
+  pickup_latitude:    null,
+  pickup_longitude:   null,
+  pickup_accuracy:    null,
   notes:              '',
 })
+
+/* ── PICK-UP LOCATION (optional, from the browser) ── */
+const locating      = ref(false)
+const locationError = ref('')
+const hasLocation   = computed(() => form.pickup_latitude !== null && form.pickup_longitude !== null)
+const addressFilled = ref(false) // the empty address box was filled from the map
+const addressFromMap = ref('')   // map address offered when the donor already typed one
+
+// Fill the address box from the map; never overwrite what the donor typed
+async function fillAddressFromMap(lat, lng) {
+  addressFilled.value = false
+  addressFromMap.value = ''
+  const text = await addressFromPoint(lat, lng)
+  if (!text) return
+  if (!form.delivery_address.trim()) {
+    form.delivery_address = text
+    addressFilled.value = true
+  } else if (form.delivery_address.trim() !== text) {
+    addressFromMap.value = text
+  }
+}
+
+function useMapAddress() {
+  form.delivery_address = addressFromMap.value
+  addressFromMap.value = ''
+  addressFilled.value = true
+}
+
+function useMyLocation() {
+  locationError.value = ''
+  if (!window.isSecureContext) {
+    locationError.value = 'Location only works on the secure (https) FoundationLink link. You can still just type your address.'
+    return
+  }
+  if (!('geolocation' in navigator)) {
+    locationError.value = "This browser can't share your location. Please type your address instead."
+    return
+  }
+  locating.value = true
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      form.pickup_latitude  = Number(pos.coords.latitude.toFixed(7))
+      form.pickup_longitude = Number(pos.coords.longitude.toFixed(7))
+      form.pickup_accuracy  = Math.round(pos.coords.accuracy)
+      locating.value = false
+      fillAddressFromMap(form.pickup_latitude, form.pickup_longitude)
+    },
+    err => {
+      locationError.value = err.code === err.PERMISSION_DENIED
+        ? "Location is blocked. Allow it in your browser and in your device's location settings (on Windows: Settings → Privacy & security → Location), or just type your address."
+        : "We couldn't get your location. Please try again, or just type your address."
+      locating.value = false
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  )
+}
+
+function clearLocation() {
+  form.pickup_latitude  = null
+  form.pickup_longitude = null
+  form.pickup_accuracy  = null
+  addressFilled.value   = false
+  addressFromMap.value  = ''
+}
 
 // Find full account details for the selected payment method
 const selectedPaymentAccount = computed(() => {
@@ -349,6 +452,11 @@ async function submit() {
         'delivery_address',
         form.delivery_method === 'pickup' ? form.delivery_address : (foundationAddress.value || '')
       )
+      if (form.delivery_method === 'pickup' && hasLocation.value) {
+        fd.append('pickup_latitude', form.pickup_latitude)
+        fd.append('pickup_longitude', form.pickup_longitude)
+        if (form.pickup_accuracy !== null) fd.append('pickup_accuracy', form.pickup_accuracy)
+      }
     }
 
     if (form.notes) fd.append('notes', form.notes)
@@ -408,6 +516,8 @@ function getImage(path) { return path ? `/storage/${path}` : '' }
 }
 .form-group input:focus, .form-group textarea:focus { border-color: #1a8a52; box-shadow: 0 0 0 3px rgba(26,138,82,0.1); }
 .form-group textarea { height: 80px; resize: none; }
+/* two lines, so a long address from the map is fully visible */
+.form-group textarea.address-input { height: 62px; resize: vertical; }
 
 /* PAYMENT METHOD */
 .payment-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
@@ -484,6 +594,31 @@ function getImage(path) { return path ? `/storage/${path}` : '' }
 }
 .address-label { font-size: 0.72rem; color: #1a8a52; font-weight: 700; margin-bottom: 2px; }
 .address-value { font-weight: 600; color: #0F2D52; }
+.directions-link { display: inline-block; margin-top: 6px; font-size: 0.78rem; font-weight: 700; color: #1a8a52; text-decoration: none; }
+.directions-link:hover { text-decoration: underline; }
+
+/* optional exact pick-up spot */
+.location-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; }
+.btn-location {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border: 1.5px solid #a7f3d0; border-radius: 10px;
+  background: #ecfdf5; color: #0e5c36; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+}
+.btn-location:hover:not(:disabled) { background: #d1fae5; }
+.btn-location:disabled { opacity: 0.7; cursor: wait; }
+.location-hint { font-size: 0.74rem; color: #94a3b8; }
+.location-saved {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px;
+  font-size: 0.78rem; font-weight: 700; color: #059669;
+}
+.location-saved a { color: #1a8a52; }
+.link-btn { border: none; background: none; padding: 0; color: #dc2626; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline; }
+.location-warn { margin: 6px 0 0; font-size: 0.76rem; color: #b45309; line-height: 1.45; }
+.location-filled { margin: 6px 0 0; font-size: 0.76rem; color: #1a8a52; font-weight: 600; line-height: 1.45; }
+.location-suggest { margin: 6px 0 0; font-size: 0.76rem; color: #475569; line-height: 1.45; }
+.link-btn.use { color: #1a8a52; margin-left: 6px; }
+.location-error { margin: 6px 0 0; font-size: 0.76rem; color: #dc2626; line-height: 1.45; }
+.location-privacy { margin: 6px 0 0; font-size: 0.72rem; color: #94a3b8; }
 
 .error-text { font-size: 0.82rem; color: #cc3333; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: 8px; padding: 9px 13px; margin-bottom: 12px; }
 

@@ -123,6 +123,41 @@
       <!-- CAMPAIGN TIMELINE: donations per day / month with promotions on the chart -->
       <CampaignTimeline :campaigns="perCampaign" />
 
+      <!-- FOLLOWERS & ENGAGEMENT: does following turn into giving? -->
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-head">
+          <h3 class="panel-title">Followers &amp; Engagement</h3>
+          <router-link to="/foundation/donor" class="panel-link">See followers →</router-link>
+        </div>
+        <div class="panel-body">
+          <div class="engage-stats">
+            <div class="engage-stat">
+              <div class="engage-value">{{ followers.summary.total }}</div>
+              <div class="engage-label">Followers</div>
+            </div>
+            <div class="engage-stat">
+              <div class="engage-value">{{ followers.summary.new_this_month }}</div>
+              <div class="engage-label">New this month</div>
+            </div>
+            <div class="engage-stat">
+              <div class="engage-value">{{ followers.summary.became_donors_percent }}%</div>
+              <div class="engage-label">Became donors ({{ followers.summary.donated }})</div>
+            </div>
+          </div>
+
+          <div class="engage-chart-title">New followers per month</div>
+          <div class="engage-chart" role="img" :aria-label="followersChartLabel">
+            <div v-for="m in followers.by_month" :key="m.month" class="engage-col">
+              <div class="engage-count">{{ m.count }}</div>
+              <div class="engage-bar-track">
+                <div class="engage-bar" :style="{ height: followerBarHeight(m.count) + '%' }"></div>
+              </div>
+              <div class="engage-month">{{ m.label }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -147,6 +182,26 @@ const checkingStatus = ref(true)
 
 const isExporting    = ref(false)
 const foundationName = ref("")
+
+/* ── FOLLOWERS & ENGAGEMENT ── */
+const followers = ref({
+  summary: { total: 0, donated: 0, new_this_month: 0, became_donors_percent: 0 },
+  by_month: [],
+})
+async function loadFollowers() {
+  try {
+    const res = await api.get("/foundation/followers")
+    if (res.data?.summary) followers.value = res.data
+  } catch (err) {
+    console.error("Failed to load followers:", err)
+  }
+}
+function followerBarHeight(count) {
+  const max = Math.max(1, ...followers.value.by_month.map(m => m.count))
+  return count ? Math.max(6, Math.round(count / max * 100)) : 0
+}
+const followersChartLabel = computed(() =>
+  "New followers per month: " + followers.value.by_month.map(m => `${m.label} ${m.count}`).join(", "))
 
 /* ── FOUNDATION STATUS ── */
 async function loadFoundationStatus() {
@@ -179,7 +234,10 @@ async function load() {
 
 onMounted(async () => {
   await loadFoundationStatus()
-  if (isVerified.value) load()
+  if (isVerified.value) {
+    load()
+    loadFollowers()
+  }
 })
 
 const summaryCards = computed(() => [
@@ -534,4 +592,19 @@ async function exportPdf() {
 /* Wide table: scrolls sideways inside its own box on small screens (never cut off) */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table-scroll .report-table { min-width: 720px; }
+
+/* Followers & Engagement */
+.panel-link { font-size: 0.8rem; font-weight: 600; color: var(--fa-primary); text-decoration: none; }
+.panel-link:hover { text-decoration: underline; }
+.engage-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.engage-stat { background: var(--fa-primary-tint); border: 1px solid var(--fa-primary-border); border-radius: 12px; padding: 12px 14px; }
+.engage-value { font-size: 1.35rem; font-weight: 800; color: var(--fa-heading); }
+.engage-label { font-size: 0.78rem; color: var(--fa-muted); margin-top: 2px; }
+.engage-chart-title { font-size: 0.8rem; font-weight: 700; color: var(--fa-heading); margin-bottom: 10px; }
+.engage-chart { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; }
+.engage-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.engage-count { font-size: 0.76rem; font-weight: 700; color: var(--fa-heading); }
+.engage-bar-track { width: 100%; max-width: 44px; height: 90px; display: flex; align-items: flex-end; background: #f1f5f9; border-radius: 8px; overflow: hidden; }
+.engage-bar { width: 100%; background: var(--fa-primary); border-radius: 8px 8px 0 0; transition: height 0.4s; }
+.engage-month { font-size: 0.74rem; color: var(--fa-muted); }
 </style>

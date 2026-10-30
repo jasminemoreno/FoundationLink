@@ -133,12 +133,16 @@
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
               </div>
-              <input
+              <DateField
                 v-model="form.birthdate"
-                type="date"
+                plain
+                clearable
                 placeholder="Birthdate"
-                @focus="focused = 'birthdate'"
-                @blur="focused = null"
+                title="Your birthdate"
+                :max="birthdateMax"
+                :start="birthdateStart"
+                @open="focused = 'birthdate'"
+                @close="focused = null"
               />
             </div>
           </div>
@@ -336,6 +340,12 @@ import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
 import LegalModal from '../components/donor/legalmodal.vue'
+import DateField from '../components/DateField.vue'
+import { addDaysTo, manilaToday } from '../composable/dates.js'
+
+// Birthdate must be before today (server rule); the calendar opens about 20 years back
+const birthdateMax   = addDaysTo(manilaToday(), -1)
+const birthdateStart = `${Number(manilaToday().slice(0, 4)) - 20}-01-01`
 
 const router    = useRouter()
 const step      = ref(1)
@@ -383,7 +393,7 @@ const termsSections = [
   {
     heading: '8. Contact',
     body: 'Questions about these Terms can be sent to',
-    link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' }
+    link: { text: 'foundationlink.support@gmail.com', href: 'mailto:foundationlink.support@gmail.com' }
   },
 ]
 
@@ -419,7 +429,7 @@ const privacySections = [
   {
     heading: '8. Contact',
     body: 'Questions about this Privacy Policy can be sent to',
-    link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' }
+    link: { text: 'foundationlink.support@gmail.com', href: 'mailto:foundationlink.support@gmail.com' }
   },
 ]
 
@@ -554,7 +564,7 @@ async function register() {
 
   isLoading.value = true
   try {
-    await api.post('/register/donor', {
+    const { data } = await api.post('/register/donor', {
       first_name:            form.first_name,
       last_name:             form.last_name,
       email:                 form.email,
@@ -567,7 +577,14 @@ async function register() {
     })
 
     clearDraft() // account created: forget what was typed
-    router.push('/login')
+    // logged in right away (same as login.vue): straight to Home
+    if (data?.token) {
+      sessionStorage.setItem('token', data.token)
+      sessionStorage.setItem('user', JSON.stringify(data.user))
+      router.push('/donor/dashboard')
+    } else {
+      router.push('/login')
+    }
   } catch (err) {
     const errors = err.response?.data?.errors
     if (errors) {
@@ -728,17 +745,6 @@ async function register() {
 .input-group select { cursor: pointer; }
 .input-group input::placeholder { color: #c0d4ca; font-weight: 500; }
 
-/* Birthdate: the calendar on the left is its icon, so hide the browser's second
-   one, but keep the whole box opening the date picker when clicked */
-.input-group input[type="date"] { position: relative; cursor: pointer; }
-.input-group input[type="date"]::-webkit-calendar-picker-indicator {
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  opacity: 0;
-  cursor: pointer;
-}
 
 .eye-btn {
   width: 44px;

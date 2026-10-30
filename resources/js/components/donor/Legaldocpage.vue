@@ -32,7 +32,7 @@
   //      { heading: '1. Information We Collect', body: 'When you register...' },
   //      ...
   //      { heading: '8. Contact', body: 'Questions about this Privacy Policy can be sent to',
-  //        link: { text: 'support@foundationlink.com', href: 'mailto:support@foundationlink.com' } },
+  //        link: { text: 'foundationlink.support@gmail.com', href: 'mailto:foundationlink.support@gmail.com' } },
   //    ]
   // 3. In the page's own template, render the component with title and :sections bound.
   

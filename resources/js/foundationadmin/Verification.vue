@@ -181,7 +181,7 @@ async function submitVerification() {
     // During first sign-up send the registration token; when logged in,
     // api.js already attaches the login token
     const registrationToken = sessionStorage.getItem("registration_token")
-    await api.post("/foundation-verification", formData, {
+    const { data } = await api.post("/foundation-verification", formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
         ...(registrationToken ? { Authorization: `Bearer ${registrationToken}` } : {})
@@ -193,13 +193,18 @@ async function submitVerification() {
     sessionStorage.removeItem("foundation_admin_id")
     sessionStorage.removeItem("foundation_id")
 
+    // First sign-up: the server logs the new admin in, so no trip to the login page
+    if (data?.token) {
+      sessionStorage.setItem("token", data.token)
+      sessionStorage.setItem("user", JSON.stringify(data.user))
+    }
+
     isSubmitting.value = false
     showSuccess.value = true
 
     setTimeout(() => {
       showSuccess.value = false
-      // First sign-up ends at the login page; a logged-in admin goes back to the dashboard
-      router.push(registrationToken ? "/login" : "/foundation/dashboard")
+      router.push(sessionStorage.getItem("token") ? "/foundation/dashboard" : "/login")
     }, 2000)
 
   } catch (err) {
