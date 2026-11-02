@@ -111,9 +111,9 @@
               v-for="doc in foundation?.identity_documents"
               :key="doc.id"
               class="doc-img-wrap"
-              @click="preview(getImage(doc.file_path))"
+              @click="preview(doc.file_url)"
             >
-              <img :src="getImage(doc.file_path)" :alt="doc.file_name" />
+              <img :src="doc.file_url" :alt="doc.file_name" />
               <div class="doc-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -144,9 +144,9 @@
               v-for="doc in foundation?.legitimacy_documents"
               :key="doc.id"
               class="doc-img-wrap"
-              @click="preview(getImage(doc.file_path))"
+              @click="preview(doc.file_url)"
             >
-              <img :src="getImage(doc.file_path)" :alt="doc.file_name" />
+              <img :src="doc.file_url" :alt="doc.file_name" />
               <div class="doc-overlay">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -220,11 +220,6 @@ function close() {
 
 function preview(src) {
   previewImg.value = src
-}
-
-function getImage(path) {
-  if (!path) return ""
-  return `/storage/${path}`
 }
 
 function statusLabel(s) {

@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Notifications\Notification;
@@ -31,6 +32,11 @@ class AuthController extends Controller
     // Login: after this many wrong tries, login is locked for LOGIN_LOCK_MINUTES
     private const MAX_LOGIN_TRIES = 5;
     private const LOGIN_LOCK_MINUTES = 5;
+
+    // One account, whatever the address: many addresses together can't keep guessing.
+    // One address locks itself long before this, so it can't lock the real owner out.
+    private const MAX_LOGIN_TRIES_PER_EMAIL = 30;
+    private const EMAIL_LOCK_MINUTES = 15;
 
     /**
      * Login
@@ -75,6 +81,15 @@ class AuthController extends Controller
             return $this->loginLockedResponse($lock);
         }
 
+        $emailKey = 'login-email:' . sha1(strtolower($credentials['email']));
+        if (RateLimiter::tooManyAttempts($emailKey, self::MAX_LOGIN_TRIES_PER_EMAIL)) {
+            // lockouts above 1 also points to support: the owner did nothing wrong here
+            return $this->loginLockedResponse([
+                'locked_until' => now()->timestamp + RateLimiter::availableIn($emailKey),
+                'lockouts' => 2,
+            ]);
+        }
+
         // Refuse suspended / inactive accounts with a clear reason. This runs only
         // after the password is confirmed, so the message never reveals which
         // emails are registered to someone who does not know the password.
@@ -114,6 +129,8 @@ class AuthController extends Controller
         }
 
         if (!Auth::attempt($credentials)) {
+            RateLimiter::hit($emailKey, self::EMAIL_LOCK_MINUTES * 60);
+
             $lock['fails']++;
             if ($lock['fails'] >= self::MAX_LOGIN_TRIES) {
                 $lock = [
@@ -142,7 +159,9 @@ class AuthController extends Controller
             ], 422);
         }
 
-        Cache::forget($lockKey); // a successful login starts the count over
+        // a successful login starts the count over
+        Cache::forget($lockKey);
+        RateLimiter::clear($emailKey);
 
         $user = Auth::user();
 

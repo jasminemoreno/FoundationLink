@@ -30,8 +30,26 @@ class AppServiceProvider extends ServiceProvider
         // Login / password-reset attempts: 5 per minute per email *and* IP.
         // Keying by IP alone would let a few people behind one shared network
         // (a school or office) lock everyone else out of logging in.
+        // The hourly limit per email stops many addresses together flooding one inbox.
         RateLimiter::for('auth-attempts', function (Request $request) {
-            return Limit::perMinute(5)->by(strtolower((string) $request->input('email')) . '|' . $request->ip());
+            $email = strtolower((string) $request->input('email'));
+
+            return [
+                Limit::perMinute(5)->by($email . '|' . $request->ip()),
+                Limit::perHour(15)->by('email:' . $email),
+            ];
+        });
+
+        // Generous enough for a classroom on one Wi-Fi; stops scripts making accounts.
+        RateLimiter::for('sign-up', function (Request $request) {
+            $tooMany = fn() => response()->json([
+                'message' => 'Too many sign-up attempts from this network. Please wait a few minutes and try again.',
+            ], 429);
+
+            return [
+                Limit::perMinute(10)->by($request->ip())->response($tooMany),
+                Limit::perHour(60)->by($request->ip())->response($tooMany),
+            ];
         });
 
         // Login itself locks after 5 wrong tries for 5 minutes (AuthController::login),

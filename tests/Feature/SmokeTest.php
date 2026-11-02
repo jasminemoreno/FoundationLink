@@ -150,6 +150,10 @@ class SmokeTest extends TestCase
             if (str_contains($uri, '{token}')) {
                 continue;
             }
+            // Private file links need a signature; covered by SecurityFixesTest.
+            if ($uri === 'api/files/{path}') {
+                continue;
+            }
 
             $area = explode('/', $uri)[1];
             $user = $this->users[$area] ?? $this->users['donor'];

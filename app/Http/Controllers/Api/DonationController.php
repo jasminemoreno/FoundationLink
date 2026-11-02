@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\Foundation;
 use App\Models\Notification;
+use App\Support\PrivateFile;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,7 @@ class DonationController extends Controller
                     // monetary
                     'amount' => $d->amount,
                     'payment_method' => $d->paymentMethod?->name,
-                    'proof_photo' => $d->proof_photo,
+                    'proof_photo' => PrivateFile::url($d->proof_photo),
 
                     // item
                     'item_name' => $d->item_name,
@@ -116,6 +117,12 @@ class DonationController extends Controller
     public function schedulePickup(Request $request, $id)
     {
         $foundation = $this->getFoundation();
+
+        if ($foundation->status !== 'verified') {
+            return response()->json([
+                'message' => 'Your foundation must be verified before managing donations.'
+            ], 403);
+        }
 
         $donation = Donation::with('campaign')
             ->whereHas('campaign', fn($q) => $q->where('foundation_id', $foundation->id))

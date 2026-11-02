@@ -154,14 +154,14 @@ class FoundationController extends Controller
                     ->where('type', 'identity')
                     ->map(fn($d) => [
                         'id' => $d->id,
-                        'file_path' => $d->file_path,
+                        'file_url' => $d->file_url,
                     ])->values(),
 
                 'legitimacy_documents' => $f->documents
                     ->where('type', 'legitimacy')
                     ->map(fn($d) => [
                         'id' => $d->id,
-                        'file_path' => $d->file_path,
+                        'file_url' => $d->file_url,
                     ])->values(),
             ];
         }));
@@ -333,7 +333,7 @@ class FoundationController extends Controller
             $foundation->documents()->where('type', 'identity')->delete();
 
             foreach ($request->file('admin_files') as $file) {
-                $path = $file->store('foundation/admin_ids', 'public');
+                $path = $file->store('foundation/admin_ids', 'local');
 
                 $foundation->documents()->create([
                     'type' => 'identity',
@@ -350,7 +350,7 @@ class FoundationController extends Controller
             $foundation->documents()->where('type', 'legitimacy')->delete();
 
             foreach ($request->file('doc_files') as $file) {
-                $path = $file->store('foundation/documents', 'public');
+                $path = $file->store('foundation/documents', 'local');
 
                 $foundation->documents()->create([
                     'type' => 'legitimacy',
@@ -623,6 +623,7 @@ class FoundationController extends Controller
                 ], 422);
             }
             $user->password = Hash::make($validated['new_password']);
+            $passwordChanged = true;
         }
 
         foreach (['first_name', 'last_name', 'phone', 'address', 'gender', 'birthdate'] as $field) {
@@ -632,6 +633,10 @@ class FoundationController extends Controller
         }
 
         $user->save();
+
+        if ($passwordChanged ?? false) {
+            $user->revokeOtherTokens();
+        }
 
         return response()->json(['message' => 'Profile updated', 'user' => $user->fresh()]);
     }

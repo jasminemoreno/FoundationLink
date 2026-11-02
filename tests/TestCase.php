@@ -3,9 +3,19 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
 {
+    /** Uploads in tests go to temporary folders, never the real storage folders. */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('local');
+        Storage::fake('public');
+    }
+
     /**
      * Safety check: tests wipe and refill the database (RefreshDatabase), so they
      * must only ever run on the throwaway in-memory SQLite database from phpunit.xml.

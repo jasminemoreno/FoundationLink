@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Notifications\Notifiable;
 
 
@@ -52,6 +53,16 @@ class User extends Authenticatable
     | Helper Methods
     |--------------------------------------------------------------------------
     */
+
+    /** After a password change: logs out every other phone and browser, keeps this one. */
+    public function revokeOtherTokens(): void
+    {
+        $current = $this->currentAccessToken();
+
+        $this->tokens()
+            ->when($current instanceof PersonalAccessToken, fn($query) => $query->whereKeyNot($current->getKey()))
+            ->delete();
+    }
 
     public function isSuperAdmin()
     {

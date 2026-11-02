@@ -804,7 +804,11 @@ async function confirmReceive() {
 function openView(d) { viewDonation.value = { ...d } }
 
 /* ── VERIFICATION IMAGE (proof of payment / item photo) ── */
-function getImage(path) { return path ? `/storage/${path}` : '' }
+// private files (receipts) already come as a full signed link
+function getImage(path) {
+  if (!path) return ''
+  return /^https?:\/\//.test(path) ? path : `/storage/${path}`
+}
 
 /* ── DONATION DETAILS helpers ── */
 // same reference the donor sees (FL-000123)

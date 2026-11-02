@@ -50,7 +50,7 @@ class FoundationVerificationController extends Controller
 
             foreach ($request->file('admin_files') as $file) {
 
-                $path = $file->store('foundation/admin_ids', 'public');
+                $path = $file->store('foundation/admin_ids', 'local');
 
                 FoundationDocument::create([
                     'foundation_id' => $foundation->id,
@@ -71,7 +71,7 @@ class FoundationVerificationController extends Controller
 
             foreach ($request->file('doc_files') as $file) {
 
-                $path = $file->store('foundation/documents', 'public');
+                $path = $file->store('foundation/documents', 'local');
 
                 FoundationDocument::create([
                     'foundation_id' => $foundation->id,

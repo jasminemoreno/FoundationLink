@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\FoundationFollowController;
 use App\Http\Controllers\Api\FoundationPaymentAccountController;
 use App\Http\Controllers\Api\FoundationVerificationController;
 use App\Http\Controllers\Api\PaymentMethodController;
+use App\Http\Controllers\Api\PrivateFileController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SuperAdminController;
@@ -27,9 +28,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login-flood');
-Route::post('/register/donor', [AuthController::class, 'registerDonor']);
-Route::post('/foundation-admin/register', [AuthController::class, 'registerFoundation']);
+Route::post('/register/donor', [AuthController::class, 'registerDonor'])->middleware('throttle:sign-up');
+Route::post('/foundation-admin/register', [AuthController::class, 'registerFoundation'])->middleware('throttle:sign-up');
 Route::get('/categories', [CategoryController::class, 'index']);
+
+// IDs, foundation documents and payment receipts. Pictures can't send a login
+// token, so the signed link the API gives out is the proof (App\Support\PrivateFile).
+Route::get('/files/{path}', [PrivateFileController::class, 'show'])
+    ->where('path', '.*')
+    ->middleware('signed:relative')
+    ->name('private-file');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-attempts');
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:auth-attempts');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-attempts');

@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use App\Support\PrivateFile;
 
 class DonorController extends Controller
 {
@@ -185,7 +186,7 @@ class DonorController extends Controller
 
         $proofPhotoPath = null;
         if ($request->hasFile('proof_photo')) {
-            $proofPhotoPath = $request->file('proof_photo')->store('donations/proofs', 'public');
+            $proofPhotoPath = $request->file('proof_photo')->store('donations/proofs', 'local');
         }
 
         $itemPhotoPath = null;
@@ -583,6 +584,10 @@ class DonorController extends Controller
 
         $user->update($validated);
 
+        if (!empty($validated['password'])) {
+            $user->revokeOtherTokens();
+        }
+
         return response()->json(['message' => 'Profile updated', 'user' => $user]);
     }
 
@@ -943,7 +948,7 @@ class DonorController extends Controller
             'pickup_schedule' => $d->pickupSchedule(),
             'notes' => $d->notes,
             'thank_you_note' => $d->thank_you_note,
-            'proof_photo' => $d->proof_photo,
+            'proof_photo' => PrivateFile::url($d->proof_photo),
             'item_photo' => $d->item_photo,
             'donated_at' => $d->donated_at ?? $d->created_at,
             // when it was last received / cancelled (or changed)
