@@ -31,9 +31,10 @@ class DonorController extends Controller
             ->where('donor_id', $donor->id)
             ->latest()->get();
 
-        // Promoted campaigns first, then newest
+        // Promoted campaigns first, then newest; ended ones can't take donations
         $featured = Campaign::with(['foundation', 'foundation.category', 'category', 'activePromotion'])
             ->where('status', 'active')
+            ->notEnded()
             ->whereHas('foundation', fn($q) => $q->where('status', 'verified'))
             ->withExists('activePromotion as is_promoted')
             ->orderByDesc('is_promoted')
@@ -141,6 +142,11 @@ class DonorController extends Controller
 
         if ($campaign->status !== 'active' || $campaign->foundation?->status !== 'verified') {
             return response()->json(['message' => 'This campaign is not accepting donations.'], 422);
+        }
+
+        // Still "active" until the foundation marks it completed, but closed after its end date
+        if ($campaign->hasEnded()) {
+            return response()->json(['message' => 'This campaign has ended and no longer accepts donations.'], 422);
         }
 
         if ($campaign->type !== 'both' && $campaign->type !== $request->type) {
@@ -828,6 +834,7 @@ class DonorController extends Controller
                     'current_amount' => $c->current_amount,
                     'start_date' => $c->start_date,
                     'end_date' => $c->end_date,
+                    'has_ended' => $c->hasEnded(),
                     'pause_reason' => $c->pause_reason,
                     'accepted_delivery_methods' => $c->accepted_delivery_methods ?? [],
                     'accepted_payment_methods' => $this->enrichPaymentMethods($c),
@@ -870,6 +877,7 @@ class DonorController extends Controller
             'start_date' => $c->start_date,
             'end_date' => $c->end_date,
             'status' => $c->status,
+            'has_ended' => $c->hasEnded(),
             'pause_reason' => $c->pause_reason,
             'accepted_delivery_methods' => $c->accepted_delivery_methods ?? [],
             'accepted_payment_methods' => $this->enrichPaymentMethods($c),

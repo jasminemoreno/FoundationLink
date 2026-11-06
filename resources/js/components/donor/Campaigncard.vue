@@ -61,12 +61,13 @@
   
         <div class="cc-btn-row">
           <button class="cc-btn-details" @click="$emit('view-details', campaign)">View Details</button>
-          <button v-if="campaign.status === 'active'" class="cc-btn-donate" @click="$emit('donate', campaign)">
+          <button v-if="campaign.status === 'active' && !campaign.has_ended" class="cc-btn-donate" @click="$emit('donate', campaign)">
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
             Donate Now
           </button>
+          <div v-else-if="campaign.status === 'active'" class="cc-status-badge ended">⌛ Ended</div>
           <div v-else class="cc-status-badge" :class="campaign.status">
             {{ campaign.status === 'completed' ? '✅ Completed' : campaign.status === 'paused' ? '⏸ Paused' : campaign.status }}
           </div>
@@ -177,4 +178,5 @@
   .cc-status-badge { flex: 1; padding: 11px; border-radius: 12px; text-align: center; font-size: 0.83rem; font-weight: 800; box-sizing: border-box; }
   .cc-status-badge.completed { background: #f0fdf4; color: #1a8a52; }
   .cc-status-badge.paused    { background: #fefce8; color: #92400e; }
+  .cc-status-badge.ended     { background: #f1f5f9; color: #475569; }
   </style>

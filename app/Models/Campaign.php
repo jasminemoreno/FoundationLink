@@ -97,6 +97,20 @@ class Campaign extends Model
         return $end->lt($today) ? null : (int) round($today->diffInDays($end));
     }
 
+    /** True once the end date is over, in the users' local time. The end date itself still counts. */
+    public function hasEnded(): bool
+    {
+        return $this->end_date !== null && $this->daysLeft() === null;
+    }
+
+    /** Campaigns with no end date, or one that isn't over yet. */
+    public function scopeNotEnded($query)
+    {
+        $today = now(config('app.display_timezone'))->toDateString();
+
+        return $query->where(fn($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today));
+    }
+
     /** People who donated (or pledged) in the last 7 days; cancelled ones don't count. */
     public function donorsThisWeek(): int
     {

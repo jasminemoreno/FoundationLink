@@ -120,6 +120,10 @@ class CampaignPromotionController extends Controller
             return response()->json(['message' => 'Only running (active) campaigns can be promoted.'], 422);
         }
 
+        if ($campaign->hasEnded()) {
+            return response()->json(['message' => 'This campaign has ended, so it can no longer be promoted.'], 422);
+        }
+
         $type = $validated['type'] ?? 'urgent';
         if ($type === 'deadline' && $campaign->daysLeft() === null) {
             return response()->json([

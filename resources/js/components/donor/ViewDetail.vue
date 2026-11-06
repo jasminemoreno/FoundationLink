@@ -36,7 +36,8 @@
   
         <!-- STATUS -->
         <div class="details-status-row">
-          <span class="status-chip" :class="campaign.status">{{ statusLabel(campaign.status) }}</span>
+          <span v-if="ended" class="status-chip ended">⌛ Ended</span>
+          <span v-else class="status-chip" :class="campaign.status">{{ statusLabel(campaign.status) }}</span>
         </div>
   
         <!-- DESCRIPTION -->
@@ -105,11 +106,15 @@
         <div v-if="campaign.status === 'paused' && campaign.pause_reason" class="pause-box">
           <strong>Paused:</strong> {{ campaign.pause_reason }}
         </div>
-  
+
+        <div v-if="ended" class="ended-box">
+          This campaign ended on {{ formatDate(campaign.end_date) }} and no longer accepts donations.
+        </div>
+
         <div class="modal-actions">
           <button class="btn-cancel" @click="$emit('close')">Close</button>
           <button
-            v-if="campaign.status === 'active'"
+            v-if="campaign.status === 'active' && !ended"
             class="btn-donate"
             @click="$emit('donate', campaign)"
           >
@@ -130,6 +135,9 @@
     linkFoundation: { type: Boolean, default: true },
   })
   defineEmits(['close', 'donate'])
+
+  // Still "active" until the foundation marks it completed, but closed after its end date
+  const ended = computed(() => props.campaign?.status === 'active' && !!props.campaign?.has_ended)
   
   const percent = computed(() => {
     const goal = Number(props.campaign?.goal_amount || 0)
@@ -186,6 +194,7 @@
   .status-chip.paused    { background: #fefce8; color: #92400e; }
   .status-chip.cancelled { background: #fef2f2; color: #dc2626; }
   .status-chip.draft     { background: #f1f5f9; color: #64748b; }
+  .status-chip.ended     { background: #f1f5f9; color: #475569; }
   
   .details-section { margin-bottom: 16px; }
   .details-label { font-size: 0.78rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
@@ -208,6 +217,7 @@
   .method-chip { font-size: 0.8rem; font-weight: 700; color: #0F2D52; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 20px; padding: 6px 12px; }
   
   .pause-box { font-size: 0.82rem; color: #92400e; background: #fefce8; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 14px; line-height: 1.5; margin-bottom: 16px; }
+  .ended-box { font-size: 0.82rem; color: #475569; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; line-height: 1.5; margin-bottom: 16px; }
   
   .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
   .btn-cancel { flex: 1; padding: 12px; border: 1.5px solid #e2e8f0; background: white; color: #64748b; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; }

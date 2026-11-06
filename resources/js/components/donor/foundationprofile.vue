@@ -226,10 +226,11 @@
                   <div class="ci-action">
                     <button class="btn-view" @click="openDetails(c)">View Details</button>
                     <button
-                      v-if="c.status === 'active'"
+                      v-if="c.status === 'active' && !c.has_ended"
                       class="btn-donate"
                       @click="openDonate(c)"
                     >Donate Now</button>
+                    <span v-else-if="c.status === 'active'" class="ci-ended-label">⌛ Ended</span>
                     <span v-else-if="c.status === 'paused'" class="ci-paused-label">Temporarily Paused</span>
                     <span v-else-if="c.status === 'completed'" class="ci-completed-label">✓ Completed</span>
                   </div>
@@ -667,6 +668,7 @@ function progressColor(pct) {
 .btn-donate:hover { background: #157042; }
 .ci-paused-label    { font-size: 0.78rem; font-weight: 700; color: #ca8a04; background: #fefce8; padding: 6px 12px; border-radius: 10px; white-space: nowrap; text-align: center; }
 .ci-completed-label { font-size: 0.78rem; font-weight: 700; color: #059669; background: #f0fdf4; padding: 6px 12px; border-radius: 10px; white-space: nowrap; text-align: center; }
+.ci-ended-label     { font-size: 0.78rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 6px 12px; border-radius: 10px; white-space: nowrap; text-align: center; }
 
 /* CAMPAIGN UPDATES (nested) */
 .ci-updates { border-top: 1px solid #e2e8f0; }
