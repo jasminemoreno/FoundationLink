@@ -4,8 +4,13 @@
     <!-- HEADER -->
     <PageHeader title="Donations" subtitle="Track and manage donations to your campaigns" />
 
+    <!-- SUSPENDED: donations stay visible, but read-only -->
+    <SuspendedBanner v-if="isSuspended && !checkingStatus" compact :reason="suspensionReason">
+      You can still see your donations, but you can't mark them received, cancel them or set pick-up days while suspended.
+    </SuspendedBanner>
+
     <!-- PENDING VERIFICATION BANNER -->
-    <PendingVerificationBanner v-if="!isVerified && !checkingStatus">
+    <PendingVerificationBanner v-if="!canView && !checkingStatus">
       Donation data will appear here once your foundation has been verified by the super admin.
     </PendingVerificationBanner>
 
@@ -142,7 +147,7 @@
                 </button>
 
                 <button
-                  v-if="d.status === 'pending'"
+                  v-if="d.status === 'pending' && isVerified"
                   class="action-btn receive"
                   title="Mark as Received"
                   @click="askReceive(d)"
@@ -153,7 +158,7 @@
                 </button>
 
                 <button
-                  v-if="d.status === 'pending'"
+                  v-if="d.status === 'pending' && isVerified"
                   class="action-btn cancel"
                   title="Cancel"
                   @click="cancelDonation(d)"
@@ -311,7 +316,7 @@
             No pick-up day yet. Set one so the donor knows when you are coming.
           </p>
           <p v-if="scheduleSavedMsg" class="schedule-saved">✓ {{ scheduleSavedMsg }}</p>
-          <div v-if="viewDonation.status === 'pending'" class="schedule-actions">
+          <div v-if="viewDonation.status === 'pending' && isVerified" class="schedule-actions">
             <button
               v-if="viewDonation.pickup_schedule?.request"
               type="button"
@@ -381,12 +386,12 @@
       <template #footer>
         <button class="btn-cancel" @click="viewDonation = null">Close</button>
         <button
-          v-if="viewDonation.status === 'pending'"
+          v-if="viewDonation.status === 'pending' && isVerified"
           class="btn-danger"
           @click="cancelDonation(viewDonation); viewDonation = null"
         >Cancel Donation</button>
         <button
-          v-if="viewDonation.status === 'pending'"
+          v-if="viewDonation.status === 'pending' && isVerified"
           class="btn-save"
           @click="askReceive(viewDonation); viewDonation = null"
         >Mark as Received</button>
@@ -513,6 +518,7 @@ import { useRoute } from "vue-router"
 import api from "@/services/api"
 import PageHeader from "../components/foundation-admin/pageheader.vue"
 import PendingVerificationBanner from "../components/foundation-admin/pendingverificationbanner.vue"
+import SuspendedBanner from "../components/foundation-admin/suspendedbanner.vue"
 import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import AvatarInitials from "../components/foundation-admin/avatarinitials.vue"
@@ -544,6 +550,10 @@ const enlargedLabel  = ref("")
 
 const isVerified     = ref(false)
 const checkingStatus = ref(true)
+const isSuspended    = ref(false)
+const suspensionReason = ref("")
+// Suspended foundations still see their donations; only verified ones can act on them
+const canView = computed(() => isVerified.value || isSuspended.value)
 
 const typeTabs = [
   { key: "all",      label: "All"      },
@@ -557,6 +567,8 @@ async function loadFoundationStatus() {
   try {
     const res = await api.get("/foundation/dashboard")
     isVerified.value = res.data?.foundation?.status === 'verified'
+    isSuspended.value = res.data?.foundation?.status === 'suspended'
+    suspensionReason.value = res.data?.foundation?.suspension_reason || ""
   } catch (err) {
     console.error("Failed to load foundation status:", err)
     isVerified.value = false
@@ -668,14 +680,14 @@ function openFromQuery() {
 
 // a notification clicked while already on this page only changes the query
 watch(() => route.query.view, async v => {
-  if (!v || !isVerified.value) return
+  if (!v || !canView.value) return
   await load()
   openFromQuery()
 })
 
 onMounted(async () => {
   await loadFoundationStatus()
-  if (isVerified.value) {
+  if (canView.value) {
     await load()
     openFromQuery()
   }

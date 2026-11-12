@@ -224,7 +224,7 @@ class CriticalFixesTest extends TestCase
         $foundation = $this->makeFoundation($this->makeUser('foundation_admin'), 'verified');
         Sanctum::actingAs($this->makeUser('superadmin'));
 
-        $this->patchJson("/api/admin/foundations/{$foundation->id}/suspend")->assertOk();
+        $this->patchJson("/api/admin/foundations/{$foundation->id}/suspend", ['suspension_reason' => 'Fake receipts reported'])->assertOk();
         $this->assertSame('suspended', $foundation->fresh()->status);
 
         $this->patchJson("/api/admin/foundations/{$foundation->id}/unsuspend")->assertOk();

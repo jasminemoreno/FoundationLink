@@ -81,6 +81,7 @@
                 </button>
 
                 <button
+                  v-if="f.status === 'verified' || f.status === 'suspended'"
                   class="action-btn"
                   :class="f.status === 'suspended' ? 'restore' : 'danger'"
                   :title="f.status === 'suspended' ? 'Unsuspend' : 'Suspend'"
@@ -181,20 +182,56 @@
           <span class="mg-label">Description</span>
           <span>{{ viewFoundation.description || '—' }}</span>
         </div>
+        <div class="mg-item mg-item-full" v-if="viewFoundation.status === 'suspended' && viewFoundation.suspension_reason">
+          <span class="mg-label">Suspension reason</span>
+          <span>{{ viewFoundation.suspension_reason }}</span>
+        </div>
       </div>
 
       <template #footer>
         <button class="btn-cancel" @click="viewFoundation = null">Close</button>
         <button
           class="btn-danger"
-          v-if="viewFoundation && viewFoundation.status !== 'suspended'"
+          v-if="viewFoundation && viewFoundation.status === 'verified'"
           @click="toggleSuspend(viewFoundation); viewFoundation = null"
         >Suspend</button>
         <button
           class="btn-save"
-          v-else-if="viewFoundation"
+          v-else-if="viewFoundation && viewFoundation.status === 'suspended'"
           @click="toggleSuspend(viewFoundation); viewFoundation = null"
         >Unsuspend</button>
+      </template>
+    </BaseModal>
+
+    <!-- SUSPEND: asks for the reason the foundation admin will see -->
+    <BaseModal
+      :model-value="!!suspendTarget"
+      @update:model-value="v => !v && closeSuspend()"
+      width="420px"
+    >
+      <div class="suspend-body" v-if="suspendTarget">
+        <h3>Suspend {{ suspendTarget.name }}?</h3>
+        <p class="suspend-note">
+          Donors will no longer see this foundation or its campaigns, and its admin can't manage
+          campaigns or donations until you unsuspend it. The admin is notified and sees the reason below.
+        </p>
+        <label class="suspend-label" for="suspend-reason">Reason for suspension</label>
+        <textarea
+          id="suspend-reason"
+          v-model="suspendReason"
+          class="suspend-textarea"
+          rows="4"
+          maxlength="500"
+          placeholder="e.g. Several donors reported that donations were not used for the campaign"
+        ></textarea>
+        <p v-if="suspendError" class="suspend-error">{{ suspendError }}</p>
+      </div>
+
+      <template #footer>
+        <button class="btn-cancel" @click="closeSuspend()">Cancel</button>
+        <button class="btn-danger" :disabled="suspending" @click="confirmSuspend">
+          {{ suspending ? 'Suspending...' : 'Suspend Foundation' }}
+        </button>
       </template>
     </BaseModal>
 
@@ -241,18 +278,67 @@ const filtered = computed(() =>
   })
 )
 
-/* ── TOGGLE SUSPEND ── */
-async function toggleSuspend(f) {
-  const endpoint = f.status === 'suspended'
-    ? `/admin/foundations/${f.id}/unsuspend`
-    : `/admin/foundations/${f.id}/suspend`
+/* ── SUSPEND / UNSUSPEND ── */
+const suspendTarget = ref(null)
+const suspendReason = ref('')
+const suspendError  = ref('')
+const suspending    = ref(false)
 
+// Suspending asks for a reason first; unsuspending goes straight through.
+function toggleSuspend(f) {
+  if (f.status === 'suspended') unsuspend(f)
+  else openSuspend(f)
+}
+
+function openSuspend(f) {
+  suspendTarget.value = f
+  suspendReason.value = ''
+  suspendError.value  = ''
+}
+
+function closeSuspend() {
+  suspendTarget.value = null
+  suspendReason.value = ''
+  suspendError.value  = ''
+}
+
+function applyStatus(id, status, reason) {
+  const target = foundations.value.find(x => x.id === id)
+  if (target) {
+    target.status = status
+    target.suspension_reason = reason
+  }
+}
+
+async function confirmSuspend() {
+  const reason = suspendReason.value.trim()
+  if (reason.length < 5) {
+    suspendError.value = 'Please enter a reason (at least 5 characters).'
+    return
+  }
+
+  suspending.value = true
+  suspendError.value = ''
   try {
-    await api.patch(endpoint)
-    const target = foundations.value.find(x => x.id === f.id)
-    if (target) target.status = f.status === 'suspended' ? 'verified' : 'suspended'
+    await api.patch(`/admin/foundations/${suspendTarget.value.id}/suspend`, { suspension_reason: reason })
+    applyStatus(suspendTarget.value.id, 'suspended', reason)
+    closeSuspend()
   } catch (err) {
-    console.error('Suspend toggle failed:', err)
+    const errors = err.response?.data?.errors
+    suspendError.value = errors
+      ? Object.values(errors).flat().join(' ')
+      : (err.response?.data?.message || 'Failed to suspend the foundation.')
+  } finally {
+    suspending.value = false
+  }
+}
+
+async function unsuspend(f) {
+  try {
+    await api.patch(`/admin/foundations/${f.id}/unsuspend`)
+    applyStatus(f.id, 'verified', null)
+  } catch (err) {
+    console.error('Unsuspend failed:', err)
   }
 }
 
@@ -335,4 +421,14 @@ tbody td { padding: 14px 18px; font-size: 0.85rem; color: #475569; }
 .btn-cancel { padding: 9px 18px; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-save   { padding: 9px 20px; border: none; background: #059669; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
 .btn-danger { padding: 9px 20px; border: none; background: #dc2626; color: white; border-radius: 10px; font-size: 0.87rem; font-weight: 600; cursor: pointer; }
+.btn-danger:disabled { opacity: 0.65; cursor: not-allowed; }
+
+/* Suspend dialog (same look as suspending a user) */
+.suspend-body { padding: 28px 28px 0; text-align: left; }
+.suspend-body h3 { font-size: 1.05rem; color: #0F2D52; margin: 0 0 8px; }
+.suspend-note { font-size: 0.82rem; color: #64748b; line-height: 1.6; margin: 0 0 16px; }
+.suspend-label { display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px; }
+.suspend-textarea { width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 0.86rem; font-family: inherit; resize: none; outline: none; }
+.suspend-textarea:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+.suspend-error { font-size: 0.8rem; font-weight: 600; color: #dc2626; margin: 8px 0 0; }
 </style>

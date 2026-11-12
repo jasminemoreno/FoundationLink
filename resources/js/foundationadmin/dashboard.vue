@@ -66,6 +66,13 @@
     <!-- DASHBOARD CONTENT -->
     <div v-else>
 
+      <!-- SUSPENDED BANNER (the super admin's reason, above the rest of the dashboard) -->
+      <SuspendedBanner
+        v-if="foundationStatus === 'suspended'"
+        compact
+        :reason="foundation?.suspension_reason"
+      />
+
       <!-- FOUNDATION HEADER -->
       <div class="foundation-header">
         <div class="foundation-info">
@@ -259,6 +266,7 @@ import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import AvatarInitials from "../components/foundation-admin/avatarinitials.vue"
 import Badge from "../components/foundation-admin/badge.vue"
+import SuspendedBanner from "../components/foundation-admin/suspendedbanner.vue"
 
 const isLoading        = ref(false)
 const foundation       = ref(null)

@@ -48,6 +48,7 @@ class Foundation extends Model
         'cover_photo',
         'status',
         'rejection_reason',
+        'suspension_reason',
         'verified_at',
     ];
 

@@ -141,6 +141,7 @@ class FoundationController extends Controller
                 'logo' => $f->logo ? '/storage/' . $f->logo : null,
 
                 'status' => $f->status,
+                'suspension_reason' => $f->suspension_reason,
                 'created_at' => $f->created_at,
 
                 'user' => $f->user,
@@ -223,17 +224,57 @@ class FoundationController extends Controller
         return $foundation;
     }
 
-    public function suspend($id)
+    public function suspend(Request $request, $id)
     {
+        $validated = $request->validate([
+            'suspension_reason' => 'required|string|min:5|max:500',
+        ], [
+            'suspension_reason.required' => 'Please enter a reason for the suspension.',
+            'suspension_reason.min' => 'Please enter a reason (at least 5 characters).',
+        ]);
+
         $foundation = Foundation::findOrFail($id);
-        $foundation->update(['status' => 'suspended']);
+
+        // Only approved foundations: unsuspending returns them to "verified",
+        // which would otherwise approve one that was never reviewed
+        if ($foundation->status !== 'verified') {
+            return response()->json(['message' => 'Only approved foundations can be suspended.'], 422);
+        }
+
+        $reason = trim($validated['suspension_reason']);
+        $foundation->update(['status' => 'suspended', 'suspension_reason' => $reason]);
+
+        Notification::create([
+            'user_id' => $foundation->user_id,
+            'type' => 'foundation_suspended',
+            'title' => 'Your foundation has been suspended',
+            'message' => "Reason: {$reason} You can't manage campaigns or donations until the suspension is lifted.",
+            'notifiable_id' => $foundation->id,
+            'notifiable_type' => 'foundation',
+        ]);
+
         return response()->json(['message' => 'Foundation suspended']);
     }
 
     public function unsuspend($id)
     {
         $foundation = Foundation::findOrFail($id);
-        $foundation->update(['status' => 'verified']);
+
+        if ($foundation->status !== 'suspended') {
+            return response()->json(['message' => 'This foundation is not suspended.'], 422);
+        }
+
+        $foundation->update(['status' => 'verified', 'suspension_reason' => null]);
+
+        Notification::create([
+            'user_id' => $foundation->user_id,
+            'type' => 'foundation_unsuspended',
+            'title' => 'Your foundation is active again',
+            'message' => 'The super admin lifted the suspension. You can manage your campaigns and donations again.',
+            'notifiable_id' => $foundation->id,
+            'notifiable_type' => 'foundation',
+        ]);
+
         return response()->json(['message' => 'Foundation unsuspended']);
     }
 

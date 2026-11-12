@@ -38,7 +38,8 @@ class DonationController extends Controller
     {
         $foundation = $this->getFoundation();
 
-        if ($foundation->status !== 'verified') {
+        // A suspended foundation still sees its donations (read-only); managing them stays blocked
+        if (!in_array($foundation->status, ['verified', 'suspended'], true)) {
             return response()->json([]);
         }
 

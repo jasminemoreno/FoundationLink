@@ -18,7 +18,10 @@
     </PageHeader>
 
     <!-- PENDING VERIFICATION BANNER -->
-    <PendingVerificationBanner v-if="!isVerified && !checkingStatus">
+    <SuspendedBanner v-if="isSuspended && !checkingStatus" :reason="suspensionReason">
+      You can't create or manage campaigns while your foundation is suspended.
+    </SuspendedBanner>
+    <PendingVerificationBanner v-else-if="!isVerified && !checkingStatus">
       You'll be able to create and manage campaigns once your foundation has been verified by the super admin.
     </PendingVerificationBanner>
 
@@ -766,6 +769,7 @@ import api from "@/services/api"
 import CampaignUpdatesPanel from "../components/foundation-admin/campaignupdate.vue"
 import PageHeader from "../components/foundation-admin/pageheader.vue"
 import PendingVerificationBanner from "../components/foundation-admin/pendingverificationbanner.vue"
+import SuspendedBanner from "../components/foundation-admin/suspendedbanner.vue"
 import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import Badge from "../components/foundation-admin/badge.vue"
@@ -807,6 +811,8 @@ const completing     = ref(false)
 
 const isVerified     = ref(false)
 const checkingStatus = ref(true)
+const isSuspended    = ref(false)
+const suspensionReason = ref("")
 
 const categories = ref([])
 
@@ -832,6 +838,8 @@ async function loadFoundationStatus() {
   try {
     const res = await api.get("/foundation/dashboard")
     isVerified.value = res.data?.foundation?.status === 'verified'
+    isSuspended.value = res.data?.foundation?.status === 'suspended'
+    suspensionReason.value = res.data?.foundation?.suspension_reason || ""
   } catch (err) {
     console.error("Failed to load foundation status:", err)
     isVerified.value = false
