@@ -289,7 +289,8 @@ function formatMoney(value) {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .modal-header::after {
-  content: ''; position: absolute; inset: 0;
+  /* decorative glow on top of the header: let clicks reach the X button underneath */
+  content: ''; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(220px 120px at 90% 0%, rgba(173,127,39,0.35), transparent 70%);
 }
 .modal-cover {
