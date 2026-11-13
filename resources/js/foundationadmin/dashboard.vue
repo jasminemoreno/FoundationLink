@@ -105,7 +105,7 @@
         <div class="panel">
           <div class="panel-head">
             <h3 class="panel-title">Recent Donations</h3>
-            <router-link to="/foundation/donations" class="panel-link">View all →</router-link>
+            <router-link to="/foundation/donation" class="panel-link">View all →</router-link>
           </div>
 
           <div class="panel-body">

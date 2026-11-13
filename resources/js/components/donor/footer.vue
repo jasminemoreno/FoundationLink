@@ -12,11 +12,11 @@
       <div class="footer-links">
         <div class="fl-col">
           <span class="fl-title">Navigation</span>
-          <router-link to="/donor/home"      class="fl-link">Home</router-link>
+          <router-link to="/donor/dashboard" class="fl-link">Home</router-link>
           <router-link to="/donor/foundations"      class="fl-link">Foundations</router-link>
           <router-link to="/donor/campaigns" class="fl-link">Campaigns</router-link>
           <router-link to="/donor/donations" class="fl-link">My Donations</router-link>
-          <router-link to="/donor/updates"   class="fl-link">Updates</router-link>
+          <router-link to="/donor/notifications" class="fl-link">Notifications</router-link>
         </div>
         <div class="fl-col">
 <span class="fl-title">Support</span>
