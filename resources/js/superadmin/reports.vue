@@ -336,9 +336,36 @@ async function exportPdf() {
     doc.text('FoundationLink — Reports & Analytics', margin, 14)
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    if (filterScope.value) doc.text(peso(filterScope.value), pageW - margin, 19, { align: 'right' })
-    doc.text(`Period: ${rangeLabel(range.value)}   Generated: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}`, pageW - margin, 14, { align: 'right' })
-    y = 30
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}`, pageW - margin, 14, { align: 'right' })
+
+    /* What this report covers: the filters and dates chosen on the page */
+    const fit = (text, width) => {
+      const lines = doc.splitTextToSize(peso(text), width)
+      return lines.length > 1 ? lines[0].replace(/\s*\S*$/, '') + '…' : (lines[0] || '')
+    }
+    const third = (pageW - margin * 2) / 3
+    const covers = [
+      ['FOUNDATION', foundationId.value ? nameOf(options.value.foundations, foundationId.value) : 'All foundations'],
+      ['CATEGORY', categoryId.value ? nameOf(options.value.categories, categoryId.value) : 'All categories'],
+      ['PERIOD', rangeLabel(range.value)],
+    ]
+    doc.setFillColor(241, 245, 249)
+    doc.roundedRect(margin, 27, pageW - margin * 2, 16, 2, 2, 'F')
+    covers.forEach(([label, value], i) => {
+      const x = margin + 4 + i * third
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7)
+      doc.setTextColor(100, 116, 139)
+      doc.text(label, x, 32)
+      doc.setFontSize(9.5)
+      doc.setTextColor(15, 45, 82)
+      doc.text(fit(value, third - 8), x, 38.5)
+    })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(100, 116, 139)
+    doc.text('Money and items count only donations marked as received.', margin, 48)
+    y = 56
 
     /* KPIs */
     doc.setTextColor(15, 45, 82)

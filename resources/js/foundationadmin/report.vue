@@ -494,24 +494,52 @@ async function exportPdf() {
     doc.setFillColor(...GOLD)
     doc.rect(0, 30, PAGE_W, 1.2, "F")
 
+    // Cut text to one line of the given width, ending with "…"
+    const fit = (text, width) => {
+      const lines = doc.splitTextToSize(pdfText(text), width)
+      return lines.length > 1 ? lines[0].replace(/\s*\S*$/, "") + "…" : (lines[0] || "")
+    }
+    const campaignTitle = campaignScope.value ? campaignScope.value.replace(/^Campaign: /, "") : ""
+
+    // One campaign chosen: the whole PDF is that campaign's report
     doc.setFont("helvetica", "bold")
     doc.setFontSize(18)
     doc.setTextColor(255, 255, 255)
-    doc.text("Foundation Report", M, 14)
+    doc.text(campaignTitle ? "Campaign Report" : "Foundation Report", M, 14)
 
     doc.setFont("helvetica", "normal")
     doc.setFontSize(10)
-    doc.text(pdfText(foundationName.value) || "Overview of your foundation's performance", M, 22)
+    const subtitle = campaignTitle
+      ? `${campaignTitle} · ${foundationName.value}`
+      : (foundationName.value || "Overview of your foundation's performance")
+    doc.text(fit(subtitle, CW - 62), M, 22)
 
     doc.setFontSize(9)
     doc.text(
       "Generated " + new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
       PAGE_W - M, 14, { align: "right" }
     )
-    doc.text(pdfText("Period: " + rangeLabel(range.value)), PAGE_W - M, 22, { align: "right" })
-    if (campaignScope.value) doc.text(pdfText(campaignScope.value), PAGE_W - M, 27, { align: "right" })
 
-    y = 42
+    /* WHAT THIS REPORT COVERS */
+    const coverY = 36
+    const half = CW / 2
+    doc.setFillColor(...LIGHT)
+    doc.roundedRect(M, coverY, CW, 17, 2, 2, "F")
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(7.5)
+    doc.setTextColor(...GRAY)
+    doc.text("CAMPAIGN", M + 4, coverY + 6)
+    doc.text("PERIOD", M + half + 4, coverY + 6)
+    doc.setFontSize(10.5)
+    doc.setTextColor(...NAVY)
+    doc.text(fit(campaignTitle || "All campaigns", half - 8), M + 4, coverY + 12.5)
+    doc.text(fit(rangeLabel(range.value), half - 8), M + half + 4, coverY + 12.5)
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(7.5)
+    doc.setTextColor(...GRAY)
+    doc.text("Money and items count only donations marked as received.", M, coverY + 22)
+
+    y = coverY + 30
 
     /* SUMMARY */
     sectionTitle("Summary")
@@ -563,14 +591,14 @@ async function exportPdf() {
     } else {
       drawTable(
         [
-          { label: "Campaign", w: 52, align: "left" },
-          { label: "Status",   w: 20, align: "left" },
+          { label: "Campaign", w: 44, align: "left" },
+          { label: "Status",   w: 21, align: "left" },
           { label: "Type",     w: 18, align: "left" },
-          { label: "Goal",     w: 26, align: "right" },
-          { label: "Raised",   w: 26, align: "right" },
-          { label: "Progress", w: 14, align: "right" },
-          { label: "Items",    w: 13, align: "right" },
-          { label: "Donors",   w: 13, align: "right" },
+          { label: "Goal",     w: 24, align: "right" },
+          { label: "Raised",   w: 24, align: "right" },
+          { label: "Progress", w: 21, align: "right" },
+          { label: "Items",    w: 14, align: "right" },
+          { label: "Donors",   w: 16, align: "right" },
         ],
         perCampaign.value.map(c => {
           const isItem = c.type === "item"
