@@ -1,10 +1,23 @@
 <template>
   <div class="page">
 
-    <PageHeader title="Reports" subtitle="Overview of your foundation's performance" />
+    <PageHeader title="Reports" subtitle="Overview of your foundation's performance">
+      <button v-if="isVerified && !checkingStatus" class="export-btn" :disabled="isExporting || isLoading" @click="exportPdf">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        {{ isExporting ? 'Generating PDF...' : 'Export PDF' }}
+      </button>
+    </PageHeader>
 
     <!-- From / To dates: every number, chart and the PDF follow them -->
-    <ReportDateRange v-if="isVerified && !checkingStatus" v-model="range" />
+    <ReportDateRange
+      v-if="isVerified && !checkingStatus"
+      v-model="range"
+      note="Money and items count only donations you marked as received."
+    />
 
     <!-- PENDING VERIFICATION BANNER -->
     <SuspendedBanner v-if="isSuspended && !checkingStatus" :reason="suspensionReason">
@@ -19,49 +32,36 @@
 
     <div v-else>
 
-      <!-- EXPORT TOOLBAR -->
-      <div class="toolbar">
-        <button class="export-btn" :disabled="isExporting" @click="exportPdf">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          {{ isExporting ? 'Generating PDF...' : 'Export PDF' }}
-        </button>
-      </div>
-
-      <!-- SUMMARY CARDS -->
+      <!-- SUMMARY CARDS: label on top, the number, then what it counts in plain words -->
       <div class="stats-row">
-        <StatCard
-          v-for="s in summaryCards" :key="s.label"
-          :icon="s.icon" :value="s.value" :label="s.label"
-          :bg="s.bg" :col="s.col" :icon-size="40"
-        />
+        <div v-for="s in summaryCards" :key="s.label" class="sum-card">
+          <div class="sum-icon" :style="{ background: s.bg, color: s.col }" v-html="s.icon"></div>
+          <div class="sum-text">
+            <div class="sum-label">{{ s.label }}</div>
+            <div class="sum-value">{{ s.value }}</div>
+            <div class="sum-note">{{ s.note }}</div>
+          </div>
+        </div>
       </div>
 
-      <!-- MONTHLY BREAKDOWN -->
+      <!-- MONEY PER MONTH -->
       <div class="panel" style="margin-bottom: 20px;">
         <div class="panel-head">
-          <h3 class="panel-title">Monthly Breakdown ({{ monthlyPeriod }})</h3>
+          <div>
+            <h3 class="panel-title">Money Received per Month ({{ monthlyPeriod }})</h3>
+            <p class="panel-sub">The amount is written above each bar. Below it: how many donations you received that month, and how many were items.</p>
+          </div>
         </div>
         <div class="panel-body">
           <EmptyState v-if="monthly.length === 0" message="No data yet." compact />
-          <div v-else class="monthly-grid">
-            <div v-for="m in monthly" :key="m.month" class="month-card">
-              <div class="month-label">{{ m.month }}</div>
-              <div class="month-raised">₱{{ formatMoney(m.monetary) }}</div>
-              <div class="month-meta">
-                <span class="meta-item monetary">₱{{ formatMoney(m.monetary) }} raised</span>
-                <span class="meta-item item">{{ m.items }} items</span>
-                <span class="meta-item total">{{ m.total }} total</span>
+          <div v-else class="mchart" :class="{ dense: monthly.length > 8 }">
+            <div v-for="m in monthly" :key="m.month" class="mcol">
+              <div class="mtrack">
+                <div class="mvalue" :class="{ zero: !m.monetary }">₱{{ formatMoney(m.monetary) }}</div>
+                <div class="mbar" :class="{ zero: !m.monetary }" :style="{ height: monthBarHeight(m.monetary) + '%' }"></div>
               </div>
-              <div class="month-bar">
-                <div
-                  class="month-bar-fill"
-                  :style="{ height: monthBarHeight(m.monetary) + '%' }"
-                ></div>
-              </div>
+              <div class="mlabel">{{ m.month }}</div>
+              <div class="mmeta">{{ m.total }} received<span v-if="m.items"> · {{ m.items }} item{{ m.items === 1 ? '' : 's' }}</span></div>
             </div>
           </div>
         </div>
@@ -70,7 +70,10 @@
       <!-- PER CAMPAIGN -->
       <div class="panel">
         <div class="panel-head">
-          <h3 class="panel-title">Campaign Performance</h3>
+          <div>
+            <h3 class="panel-title">Campaign Performance</h3>
+            <p class="panel-sub">Raised, Items and Donors count donations you received in the chosen dates. Progress is the campaign's total progress toward its goal.</p>
+          </div>
         </div>
         <div class="panel-body">
           <EmptyState v-if="perCampaign.length === 0" icon="📋" message="No campaigns yet." compact />
@@ -132,7 +135,10 @@
       <!-- FOLLOWERS & ENGAGEMENT: does following turn into giving? -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-head">
-          <h3 class="panel-title">Followers &amp; Engagement</h3>
+          <div>
+            <h3 class="panel-title">Followers &amp; Engagement</h3>
+            <p class="panel-sub">People who follow your foundation, and how many of them have donated.</p>
+          </div>
           <router-link to="/foundation/donor" class="panel-link">See followers →</router-link>
         </div>
         <div class="panel-body">
@@ -174,7 +180,6 @@ import api from "@/services/api"
 import PageHeader from "../components/foundation-admin/pageheader.vue"
 import PendingVerificationBanner from "../components/foundation-admin/pendingverificationbanner.vue"
 import SuspendedBanner from "../components/foundation-admin/suspendedbanner.vue"
-import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import Badge from "../components/foundation-admin/badge.vue"
 import CampaignTimeline from "../components/foundation-admin/CampaignTimeline.vue"
@@ -265,38 +270,44 @@ watch(range, () => {
 
 const summaryCards = computed(() => [
   {
-    label: "Total Raised",
+    label: "Money Raised",
     value: "₱" + formatMoney(summary.value.total_raised),
+    note: "from money donations you received",
     bg: "#ecfdf5", col: "#047857",
     icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`
   },
   {
-    label: "Total Donations",
+    label: "Donations Made",
     value: summary.value.total_donations ?? 0,
+    note: "all donations, including pending and cancelled",
     bg: "#e8f0fe", col: "#2563eb",
     icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 14h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 15 6 6"/><path d="M19.5 8.5c.7-.7 1.5-1.6 1.5-2.7A2.73 2.73 0 0 0 16 4a2.78 2.78 0 0 0-5 1.8c0 1.2.8 2 1.5 2.8L16 12Z"/></svg>`
   },
   {
-    label: "Total Donors",
+    label: "Donors",
     value: summary.value.total_donors ?? 0,
+    note: "people whose donation you received",
     bg: "#ede9fe", col: "#6d28d9",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`
   },
   {
-    label: "Item Donations",
+    label: "Items Received",
     value: summary.value.total_items ?? 0,
+    note: "item donations you received",
     bg: "#fef3c7", col: "#b45309",
     icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`
   },
   {
-    label: "Total Campaigns",
+    label: "Campaigns",
     value: summary.value.total_campaigns ?? 0,
+    note: "all your campaigns, any date",
     bg: "#fce7f3", col: "#be185d",
     icon: `<svg stroke-linecap="round" stroke-linejoin="round" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>`
   },
   {
     label: "Active Campaigns",
     value: summary.value.active_campaigns ?? 0,
+    note: "running right now",
     bg: "#ecfdf5", col: "#047857",
     icon: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`
   },
@@ -571,12 +582,20 @@ async function exportPdf() {
 .page { padding: 28px; background: #f8fafc; min-height: 100%; }
 
 /* EXPORT BUTTON */
-.toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
 .export-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: none; border-radius: 10px; background: var(--fa-primary); color: #fff; font-size: 0.83rem; font-weight: 700; cursor: pointer; transition: background 0.2s ease, opacity 0.2s ease; }
 .export-btn:hover:not(:disabled) { background: #163d6e; }
 .export-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; } /* wraps: 2 per row on phones */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+@media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .stats-row { grid-template-columns: 1fr; } }
+.sum-card  { display: flex; align-items: flex-start; gap: 12px; background: var(--fa-surface, #fff); border: 1px solid var(--fa-border, #e2e8f0); border-radius: 14px; padding: 16px; }
+.sum-icon  { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.sum-text  { min-width: 0; }
+.sum-label { font-size: 0.72rem; font-weight: 700; color: var(--fa-muted, #64748b); text-transform: uppercase; letter-spacing: 0.04em; }
+.sum-value { font-size: 1.35rem; font-weight: 800; color: var(--fa-heading, #0F2D52); line-height: 1.2; margin: 3px 0 2px; overflow-wrap: anywhere; }
+.sum-note  { font-size: 0.75rem; color: var(--fa-muted, #94a3b8); line-height: 1.4; }
+.panel-sub { font-size: 0.78rem; color: var(--fa-muted, #64748b); margin: 4px 0 0; line-height: 1.5; }
 
 .panel { background: white; border-radius: 14px; border: 1px solid var(--fa-border); box-shadow: 0 1px 4px rgba(30,58,138,0.06); overflow: hidden; }
 .panel-head  { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid #f1f5f9; }
@@ -584,17 +603,28 @@ async function exportPdf() {
 .panel-body  { padding: 20px; }
 
 /* MONTHLY GRID */
-.monthly-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
-.month-card   { background: #f8fafc; border-radius: 12px; padding: 14px 12px; display: flex; flex-direction: column; gap: 6px; }
-.month-label  { font-size: 0.72rem; font-weight: 600; color: var(--fa-muted); text-transform: uppercase; }
-.month-raised { font-size: 1rem; font-weight: 800; color: var(--fa-heading); }
-.month-meta   { display: flex; flex-direction: column; gap: 3px; }
-.meta-item    { font-size: 0.7rem; font-weight: 500; }
-.meta-item.monetary { color: var(--fa-success); }
-.meta-item.item     { color: var(--fa-primary); }
-.meta-item.total    { color: var(--fa-muted); }
-.month-bar    { height: 60px; background: var(--fa-border); border-radius: 6px; overflow: hidden; display: flex; align-items: flex-end; margin-top: 4px; }
-.month-bar-fill { width: 100%; background: linear-gradient(180deg, var(--fa-primary), var(--fa-primary)); border-radius: 6px; transition: height 0.5s ease; min-height: 4px; }
+/* Money per month: one bar per month, amount written on top */
+.mchart { display: flex; gap: 14px; align-items: stretch; overflow-x: auto; padding: 8px 2px 4px; }
+.mcol   { flex: 1; min-width: 72px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mtrack { height: 170px; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; border-bottom: 2px solid var(--fa-border, #e2e8f0); }
+.mvalue { flex-shrink: 0; margin-bottom: 4px; font-size: 0.78rem; font-weight: 800; color: var(--fa-heading, #0F2D52); white-space: nowrap; }
+.mvalue.zero { color: var(--fa-muted, #94a3b8); font-weight: 600; }
+.mbar   { width: 70%; max-width: 64px; min-height: 4px; border-radius: 8px 8px 0 0; background: var(--fa-primary, #2563eb); transition: height 0.5s ease; }
+.mbar.zero { background: var(--fa-border, #e2e8f0); }
+.mlabel { font-size: 0.78rem; font-weight: 700; color: var(--fa-heading, #0F2D52); white-space: nowrap; }
+.mmeta  { font-size: 0.7rem; color: var(--fa-muted, #64748b); text-align: center; line-height: 1.4; }
+.mchart.dense { gap: 8px; }
+.mchart.dense .mcol { min-width: 64px; }
+.mchart.dense .mvalue { font-size: 0.68rem; }
+@media (max-width: 600px) {
+  /* six months fit on a phone without sideways scrolling */
+  .mchart { gap: 4px; }
+  .mcol, .mchart.dense .mcol { min-width: 46px; }
+  .mtrack { height: 140px; }
+  .mvalue, .mchart.dense .mvalue { font-size: 0.6rem; }
+  .mlabel { font-size: 0.66rem; white-space: normal; text-align: center; }
+  .mmeta { font-size: 0.6rem; }
+}
 
 /* TABLE */
 .report-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }

@@ -36,18 +36,18 @@ class SuperAdminReportController extends Controller
         /* ── KPIs ── */
         $kpis = [
             [
-                'label' => 'Total Raised',
+                'label' => 'Money Raised',
                 'value' => '₱' . number_format($raised, 0),
-                'change' => $range->label(),
+                'change' => 'from money donations received',
                 'up' => true,
                 'bg' => '#f0fdf4',
                 'col' => '#059669',
                 'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
             ],
             [
-                'label' => 'Avg Donation Size',
+                'label' => 'Average Donation',
                 'value' => '₱' . number_format($avgDonation, 0),
-                'change' => 'monetary donations',
+                'change' => 'per money donation',
                 'up' => true,
                 'bg' => '#eff6ff',
                 'col' => '#3b82f6',
@@ -56,7 +56,7 @@ class SuperAdminReportController extends Controller
             [
                 'label' => 'New Donors',
                 'value' => number_format($newDonors),
-                'change' => $range->isAllTime() ? 'registered in total' : 'registered in this period',
+                'change' => 'donor accounts created',
                 'up' => $newDonors > 0,
                 'bg' => '#fefce8',
                 'col' => '#ca8a04',
@@ -65,7 +65,7 @@ class SuperAdminReportController extends Controller
             [
                 'label' => 'Items Received',
                 'value' => number_format($itemsReceived),
-                'change' => 'item donations',
+                'change' => 'item donations received',
                 'up' => true,
                 'bg' => '#fef2f2',
                 'col' => '#dc2626',
@@ -85,7 +85,8 @@ class SuperAdminReportController extends Controller
             return [
                 'month' => $month->format($spansYears ? 'M y' : 'M'),
                 'current' => $month->format('Y-m') === now($tz)->format('Y-m'),
-                'amount' => round($amount / 1000, 1), // in thousands
+                'amount' => round($amount / 1000, 1), // in thousands, for the bar height
+                'raised' => (float) $amount,          // pesos, written above the bar
             ];
         }, $months);
 

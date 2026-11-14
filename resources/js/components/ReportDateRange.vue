@@ -40,6 +40,12 @@
         />
       </div>
     </div>
+
+    <p class="rr-showing">
+      <span class="rr-showing-dot" aria-hidden="true"></span>
+      Showing: <strong>{{ rangeLabel(modelValue) }}</strong>
+      <span v-if="note" class="rr-note">· {{ note }}</span>
+    </p>
   </div>
 </template>
 
@@ -48,10 +54,11 @@
 // v-model is { from, to } as 'YYYY-MM-DD' strings ('' = open-ended).
 import { computed } from 'vue'
 import DateField from './DateField.vue'
-import { RANGE_PRESETS, presetRange, todayYmd } from '../composable/reportRange.js'
+import { RANGE_PRESETS, presetRange, rangeLabel, todayYmd } from '../composable/reportRange.js'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({ from: '', to: '' }) },
+  note: { type: String, default: '' }, // plain-words reminder shown after "Showing: …"
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -83,9 +90,19 @@ const activePreset = computed(() => {
 .rr-dates { display: flex; flex-wrap: wrap; gap: 12px; }
 .rr-field { display: flex; flex-direction: column; gap: 4px; min-width: 170px; flex: 1; }
 .rr-label { font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+.rr-showing {
+  flex-basis: 100%; margin: 2px 0 0; padding-top: 10px; border-top: 1px dashed #e2e8f0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 0.82rem; color: #475569;
+}
+.rr-showing strong { color: #0F2D52; }
+.rr-showing-dot { width: 8px; height: 8px; border-radius: 50%; background: #D4AF37; flex-shrink: 0; }
+.rr-note { color: #64748b; }
 
 @media (max-width: 640px) {
   .report-range { flex-direction: column; align-items: stretch; }
   .rr-field { min-width: 0; }
+}
+@media (max-width: 480px) {
+  .rr-dates { flex-direction: column; }
 }
 </style>

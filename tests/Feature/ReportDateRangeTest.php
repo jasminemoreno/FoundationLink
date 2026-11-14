@@ -75,20 +75,21 @@ class ReportDateRangeTest extends TestCase
 
         $this->getJson('/api/admin/reports?from=2026-11-01&to=2026-11-15')->assertOk()
             ->assertJsonPath('period', 'Nov 1, 2026 – Nov 15, 2026')
+            ->assertJsonPath('kpis.0.label', 'Money Raised')
             ->assertJsonPath('kpis.0.value', '₱500')
-            ->assertJsonPath('kpis.0.change', 'Nov 1, 2026 – Nov 15, 2026')
             ->assertJsonPath('kpis.3.label', 'Items Received')
             ->assertJsonPath('kpis.3.value', '1')
             ->assertJsonPath('top_donors.0.amount', '₱500')
             ->assertJsonPath('top_foundations.0.raised', '₱500')
             ->assertJsonCount(1, 'monthly')
             ->assertJsonPath('monthly.0.month', 'Nov')
-            ->assertJsonPath('monthly.0.amount', 0.5);
+            ->assertJsonPath('monthly.0.amount', 0.5)
+            ->assertJsonPath('monthly.0.raised', 500);
 
         // No dates: everything received, ever
         $this->getJson('/api/admin/reports')->assertOk()
             ->assertJsonPath('kpis.0.value', '₱1,700')
-            ->assertJsonPath('kpis.0.change', 'all time')
+            ->assertJsonPath('period', 'all time')
             ->assertJsonPath('top_donors.0.amount', '₱1,700');
     }
 
@@ -185,9 +186,9 @@ class ReportDateRangeTest extends TestCase
 
         $this->getJson('/api/admin/reports?from=2026-11-01')->assertOk()
             ->assertJsonPath('kpis.0.value', '₱700')
-            ->assertJsonPath('kpis.0.change', 'since Nov 1, 2026');
+            ->assertJsonPath('period', 'since Nov 1, 2026');
         $this->getJson('/api/admin/reports?to=2026-10-31')->assertOk()
             ->assertJsonPath('kpis.0.value', '₱1,000')
-            ->assertJsonPath('kpis.0.change', 'until Oct 31, 2026');
+            ->assertJsonPath('period', 'until Oct 31, 2026');
     }
 }

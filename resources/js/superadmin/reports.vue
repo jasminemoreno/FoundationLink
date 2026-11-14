@@ -15,7 +15,7 @@
     </PageHeader>
 
     <!-- From / To dates: every number, chart and the PDF follow them -->
-    <ReportDateRange v-model="range" />
+    <ReportDateRange v-model="range" note="Money and items count only donations marked as received." />
 
     <!-- Loading -->
     <div v-if="loading" class="loading-state">
@@ -25,18 +25,16 @@
 
     <template v-else>
       <!-- KPI Row -->
+      <!-- label on top, the number, then what it counts in plain words -->
       <div class="kpi-row" id="report-kpis">
-        <StatCard
-          v-for="k in kpis" :key="k.label"
-          layout="horizontal"
-          :icon="k.icon"
-          :value="k.value"
-          :label="k.label"
-          :bg="k.bg"
-          :col="k.col"
-          :change="k.change"
-          :up="k.up"
-        />
+        <div v-for="k in kpis" :key="k.label" class="kpi-card">
+          <div class="kpi-icon" :style="{ background: k.bg, color: k.col }" v-html="k.icon"></div>
+          <div class="kpi-text">
+            <div class="kpi-label">{{ k.label }}</div>
+            <div class="kpi-value">{{ k.value }}</div>
+            <div class="kpi-note">{{ k.change }}</div>
+          </div>
+        </div>
       </div>
 
       <!-- Charts Row -->
@@ -46,14 +44,18 @@
         <div class="chart-card wide" id="report-monthly">
           <div class="chart-header">
             <div>
-              <h3>Monthly Donations</h3>
-              <p>Total donations collected per month (₱ thousands) · {{ isAllTime(range) ? 'last 6 months' : rangeLabel(range) }}</p>
+              <h3>Money Received per Month</h3>
+              <p>{{ isAllTime(range) ? 'Last 6 months' : rangeLabel(range) }} · amount written above each bar</p>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-swatch" style="background:#0F2D52"></span> Past months
+              <span class="legend-swatch" style="background:#D4AF37"></span> This month
             </div>
           </div>
-          <div v-if="monthlyData.length" class="bar-chart">
+          <div v-if="monthlyData.length" class="bar-chart" :class="{ dense: monthlyData.length > 8 }">
             <div class="bar-group" v-for="m in monthlyData" :key="m.month">
               <div class="bar-wrap">
-                <div class="bar-tooltip">₱{{ m.amount }}K</div>
+                <div class="bar-value" :class="{ zero: !barPesos(m) }">{{ shortPeso(barPesos(m)) }}</div>
                 <div class="bar" :style="{
                   height: (m.amount / maxAmount * 100) + '%',
                   background: m.current ? '#D4AF37' : '#0F2D52'
@@ -62,15 +64,15 @@
               <span class="bar-label">{{ m.month }}</span>
             </div>
           </div>
-          <div v-else class="empty-chart">No donation data yet</div>
+          <div v-else class="empty-chart">No money received in these dates</div>
         </div>
 
         <!-- Donut Chart -->
         <div class="chart-card" id="report-donut">
           <div class="chart-header">
             <div>
-              <h3>Donations by Category</h3>
-              <p>Distribution breakdown</p>
+              <h3>Money by Foundation Category</h3>
+              <p>Which kinds of foundations received the money</p>
             </div>
           </div>
           <div v-if="donutSegs.length" >
@@ -88,7 +90,7 @@
               </svg>
               <div class="donut-center">
                 <strong>{{ totalRaisedLabel }}</strong>
-                <span>total</span>
+                <span>raised</span>
               </div>
             </div>
             <div class="donut-legend">
@@ -99,7 +101,7 @@
               </div>
             </div>
           </div>
-          <div v-else class="empty-chart">No category data yet</div>
+          <div v-else class="empty-chart">No money received in these dates</div>
         </div>
       </div>
 
@@ -110,10 +112,10 @@
         <div class="table-card">
           <div class="card-header">
             <h3>Top Donors</h3>
-            <p>Highest contributors this period</p>
+            <p>The 5 donors who gave the most money in these dates</p>
           </div>
           <table v-if="topDonors.length">
-            <thead><tr><th>#</th><th>Donor</th><th>Donations</th><th>Total</th></tr></thead>
+            <thead><tr><th>#</th><th>Donor</th><th>Donations</th><th>Total Given</th></tr></thead>
             <tbody>
               <tr v-for="(d, i) in topDonors" :key="d.name">
                 <td><span class="rank-badge">{{ i + 1 }}</span></td>
@@ -128,14 +130,14 @@
               </tr>
             </tbody>
           </table>
-          <div v-else class="empty-table">No donor data yet</div>
+          <div v-else class="empty-table">No money donations received in these dates</div>
         </div>
 
         <!-- Top Foundations -->
         <div class="table-card">
           <div class="card-header">
             <h3>Top Foundations</h3>
-            <p>Most active this period</p>
+            <p>The 5 foundations that raised the most money in these dates</p>
           </div>
           <table v-if="topFoundations.length">
             <thead><tr><th>#</th><th>Foundation</th><th>Campaigns</th><th>Raised</th></tr></thead>
@@ -153,7 +155,7 @@
               </tr>
             </tbody>
           </table>
-          <div v-else class="empty-table">No foundation data yet</div>
+          <div v-else class="empty-table">No foundations yet</div>
         </div>
       </div>
     </template>
@@ -165,7 +167,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import PageHeader from '../components/superadmin/pageheader.vue'
-import StatCard from '../components/superadmin/statcard.vue'
 import Spinner from '../components/superadmin/spinner.vue'
 import AvatarInitials from '../components/superadmin/avatarinitials.vue'
 import ReportDateRange from '../components/ReportDateRange.vue'
@@ -203,13 +204,21 @@ async function fetchReports() {
 onMounted(fetchReports)
 watch(range, fetchReports, { deep: true })
 
+/* ── Bar labels: pesos for the month, e.g. ₱6,500 or ₱12.5K ── */
+function barPesos(m) { return m.raised ?? (m.amount || 0) * 1000 }
+function shortPeso(v) {
+  if (v >= 100000) return '₱' + (v / 1000).toLocaleString('en-PH', { maximumFractionDigits: 0 }) + 'K'
+  if (v >= 10000)  return '₱' + (v / 1000).toLocaleString('en-PH', { maximumFractionDigits: 1 }) + 'K'
+  return '₱' + Math.round(v).toLocaleString('en-PH')
+}
+
 /* ── Derived ── */
 const maxAmount = computed(() =>
   monthlyData.value.length ? Math.max(...monthlyData.value.map(m => m.amount || 0), 1) : 1
 )
 
 const totalRaisedLabel = computed(() => {
-  const kpi = kpis.value.find(k => k.label === 'Total Raised')
+  const kpi = kpis.value.find(k => k.label === 'Money Raised')
   return kpi ? kpi.value : '—'
 })
 
@@ -413,19 +422,31 @@ async function exportPdf() {
 .loading-state { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 80px 0; color: #94a3b8; font-size: 0.9rem; }
 
 /* KPIs */
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.kpi-card { display: flex; align-items: flex-start; gap: 14px; background: white; border-radius: 16px; padding: 18px; box-shadow: 0 1px 4px rgba(15,45,82,0.06); }
+.kpi-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.kpi-text { min-width: 0; }
+.kpi-label { font-size: 0.74rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+.kpi-value { font-size: 1.45rem; font-weight: 800; color: #0F2D52; line-height: 1.2; margin: 4px 0 2px; overflow-wrap: anywhere; }
+.kpi-note  { font-size: 0.76rem; color: #94a3b8; line-height: 1.4; }
 
 /* Charts */
 .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 20px; }
 .chart-card { background: white; border-radius: 16px; padding: 22px; box-shadow: 0 1px 4px rgba(15,45,82,0.06); }
+.chart-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 6px 16px; }
 .chart-header h3 { font-size: 0.95rem; color: #0F2D52; margin: 0 0 3px; }
 .chart-header p  { font-size: 0.78rem; color: #94a3b8; margin: 0 0 20px; }
+.chart-legend { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #64748b; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-left: 6px; }
 
-.bar-chart  { display: flex; align-items: flex-end; gap: 12px; height: 140px; }
+.bar-chart  { display: flex; align-items: flex-end; gap: 12px; height: 190px; padding-top: 20px; overflow-x: auto; }
+.bar-chart.dense { gap: 6px; }
+.bar-chart.dense .bar-group { min-width: 38px; }
+.bar-chart.dense .bar-value { font-size: 0.6rem; }
+.bar-value { flex-shrink: 0; margin-bottom: 4px; font-size: 0.7rem; font-weight: 700; color: #0F2D52; white-space: nowrap; }
+.bar-value.zero { color: #cbd5e1; font-weight: 600; }
 .bar-group  { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; height: 100%; }
-.bar-wrap   { flex: 1; width: 100%; display: flex; align-items: flex-end; position: relative; }
-.bar-wrap:hover .bar-tooltip { opacity: 1; }
-.bar-tooltip { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #0F2D52; color: white; font-size: 0.7rem; padding: 3px 7px; border-radius: 6px; white-space: nowrap; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.bar-wrap   { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-height: 0; }
 .bar       { width: 100%; border-radius: 6px 6px 0 0; min-height: 4px; transition: height 0.5s ease; }
 .bar-label { font-size: 0.72rem; color: #94a3b8; }
 

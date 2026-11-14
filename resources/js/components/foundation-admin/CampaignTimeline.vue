@@ -4,7 +4,7 @@
     <header class="ct-head">
       <div class="ct-heading">
         <h3 id="ct-title" class="ct-title">Campaign Timeline</h3>
-        <p class="ct-sub">Money received over time, the promotions you ran, and who donated when.</p>
+        <p class="ct-sub">Money received over time, the promotions you ran, and who donated when. Choose a campaign below; this section has its own day/month view and dates.</p>
       </div>
 
       <div class="ct-controls" v-if="campaigns.length">

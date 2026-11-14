@@ -183,7 +183,7 @@ class DonationIntegrityTest extends TestCase
         $this->getJson('/api/admin/reports')
             ->assertOk()
             ->assertJsonPath('kpis.0.value', '₱1,000')
-            ->assertJsonPath('kpis.0.change', 'all time')
+            ->assertJsonPath('period', 'all time')
             ->assertJsonPath('top_donors.0.amount', '₱1,000');
     }
 
