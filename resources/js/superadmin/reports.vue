@@ -3,12 +3,6 @@
 
     <PageHeader title="Reports & Analytics" subtitle="Platform-wide performance data">
       <template #actions>
-        <select v-model="period" class="filter-select">
-          <option value="month">This Month</option>
-          <option value="quarter">This Quarter</option>
-          <option value="year">This Year</option>
-          <option value="all">All Time</option>
-        </select>
         <button class="btn-export" :disabled="exporting" @click="exportPdf">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -19,6 +13,9 @@
         </button>
       </template>
     </PageHeader>
+
+    <!-- From / To dates: every number, chart and the PDF follow them -->
+    <ReportDateRange v-model="range" />
 
     <!-- Loading -->
     <div v-if="loading" class="loading-state">
@@ -50,7 +47,7 @@
           <div class="chart-header">
             <div>
               <h3>Monthly Donations</h3>
-              <p>Total donations collected per month (₱ thousands)</p>
+              <p>Total donations collected per month (₱ thousands) · {{ isAllTime(range) ? 'last 6 months' : rangeLabel(range) }}</p>
             </div>
           </div>
           <div v-if="monthlyData.length" class="bar-chart">
@@ -59,7 +56,7 @@
                 <div class="bar-tooltip">₱{{ m.amount }}K</div>
                 <div class="bar" :style="{
                   height: (m.amount / maxAmount * 100) + '%',
-                  background: m.month === currentMonth ? '#D4AF37' : '#0F2D52'
+                  background: m.current ? '#D4AF37' : '#0F2D52'
                 }"></div>
               </div>
               <span class="bar-label">{{ m.month }}</span>
@@ -171,9 +168,10 @@ import PageHeader from '../components/superadmin/pageheader.vue'
 import StatCard from '../components/superadmin/statcard.vue'
 import Spinner from '../components/superadmin/spinner.vue'
 import AvatarInitials from '../components/superadmin/avatarinitials.vue'
+import ReportDateRange from '../components/ReportDateRange.vue'
+import { presetRange, rangeLabel, rangeParams, rangeFileTag, isAllTime } from '../composable/reportRange.js'
 
-const period      = ref('month')
-const currentMonth = new Date().toLocaleString('en', { month: 'short' })
+const range       = ref(presetRange('all'))
 const circumference = 2 * Math.PI * 35
 
 const loading   = ref(true)
@@ -189,7 +187,7 @@ const topFoundations = ref([])
 async function fetchReports() {
   loading.value = true
   try {
-    const { data } = await api.get('/admin/reports', { params: { period: period.value } })
+    const { data } = await api.get('/admin/reports', { params: rangeParams(range.value) })
     kpis.value           = data.kpis           ?? []
     monthlyData.value    = data.monthly         ?? []
     donutData.value      = data.categories      ?? []
@@ -203,7 +201,7 @@ async function fetchReports() {
 }
 
 onMounted(fetchReports)
-watch(period, fetchReports)
+watch(range, fetchReports, { deep: true })
 
 /* ── Derived ── */
 const maxAmount = computed(() =>
@@ -271,8 +269,7 @@ async function exportPdf() {
     doc.text('FoundationLink — Reports & Analytics', margin, 14)
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    const periodLabel = { month: 'This Month', quarter: 'This Quarter', year: 'This Year', all: 'All Time' }
-    doc.text(`Period: ${periodLabel[period.value]}   Generated: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}`, pageW - margin, 14, { align: 'right' })
+    doc.text(`Period: ${rangeLabel(range.value)}   Generated: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}`, pageW - margin, 14, { align: 'right' })
     y = 30
 
     /* KPIs */
@@ -393,7 +390,7 @@ async function exportPdf() {
       doc.text(`Page ${i} of ${pages}  •  FoundationLink Admin`, pageW / 2, pageH - 6, { align: 'center' })
     }
 
-    doc.save(`foundationlink-report-${period.value}-${Date.now()}.pdf`)
+    doc.save(`foundationlink-report-${rangeFileTag(range.value)}-${Date.now()}.pdf`)
   } catch (err) {
     console.error('PDF export failed:', err)
     alert('PDF export failed. Please try again.')

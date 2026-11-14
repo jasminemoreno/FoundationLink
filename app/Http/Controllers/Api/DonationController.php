@@ -8,6 +8,7 @@ use App\Models\Donation;
 use App\Models\Foundation;
 use App\Models\Notification;
 use App\Support\PrivateFile;
+use App\Support\ReportRange;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -251,8 +252,10 @@ class DonationController extends Controller
      * address), when they followed, and whether they have donated to it.
      * Plus numbers for the Reports page: totals and follows per month.
      */
-    public function followers()
+    public function followers(Request $request)
     {
+        // The report page sends its From / To dates; the followers list sends none (all time)
+        $range = ReportRange::fromRequest($request);
         $foundation = Foundation::where('user_id', auth()->id())->first();
         $tz = config('app.display_timezone');
 
@@ -287,12 +290,15 @@ class DonationController extends Controller
 
         $thisMonth = now($tz)->format('Y-m');
         $monthOf = fn($f) => Carbon::parse($f['followed_at'])->setTimezone($tz)->format('Y-m');
-        $byMonth = collect(range(5, 0))->map(function ($ago) use ($tz, $followers, $monthOf) {
-            $month = now($tz)->startOfMonth()->subMonths($ago);
+        // New followers per month: the chosen months, or the last 6
+        $months = $range->months(6);
+        $spansYears = reset($months)->year !== end($months)->year;
+        $byMonth = collect($months)->map(function ($month) use ($range, $followers, $spansYears) {
+            $bucket = $range->month($month);
             return [
                 'month' => $month->format('Y-m'),
-                'label' => $month->format('M'),
-                'count' => $followers->filter(fn($f) => $monthOf($f) === $month->format('Y-m'))->count(),
+                'label' => $month->format($spansYears ? 'M y' : 'M'),
+                'count' => $followers->filter(fn($f) => $bucket->contains($f['followed_at']))->count(),
             ];
         })->values();
 
@@ -304,6 +310,7 @@ class DonationController extends Controller
                 'total' => $total,
                 'donated' => $donors,
                 'new_this_month' => $followers->filter(fn($f) => $monthOf($f) === $thisMonth)->count(),
+                'new_in_period' => $followers->filter(fn($f) => $range->isAllTime() || $range->contains($f['followed_at']))->count(),
                 'became_donors_percent' => $total ? (int) round($donors / $total * 100) : 0,
             ],
             'by_month' => $byMonth,
@@ -383,6 +390,8 @@ class DonationController extends Controller
     ══════════════════════════════ */
     public function reports(Request $request)
     {
+        // Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD; none = all time
+        $range = ReportRange::fromRequest($request);
         $foundation = $this->getFoundation();
 
         if ($foundation->status !== 'verified') {
@@ -400,11 +409,14 @@ class DonationController extends Controller
             ]);
         }
 
+        // Donations made in the chosen dates (donated_at, or created_at for older rows)
         $donations = Donation::with(['donor', 'campaign'])
             ->whereHas('campaign', function ($q) use ($foundation) {
                 $q->where('foundation_id', $foundation->id);
             })
-            ->get();
+            ->get()
+            ->filter(fn($d) => $range->isAllTime() || $range->contains($d->donated_at ?? $d->created_at))
+            ->values();
 
         $campaigns = Campaign::where('foundation_id', $foundation->id)->get();
 
@@ -412,19 +424,14 @@ class DonationController extends Controller
         // pending and cancelled donations are not money or goods actually received.
         $received = $donations->where('status', 'received');
 
-        // Monthly breakdown (last 6 months)
+        // Monthly breakdown: the chosen months, or the last 6
         $monthly = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $month = now()->subMonths($i);
-            $label = $month->format('M Y');
-            $monthKey = $month->format('Y-m');
-
-            $monthDonations = $received->filter(
-                fn($d) => Carbon::parse($d->created_at)->format('Y-m') === $monthKey
-            );
+        foreach ($range->months(6) as $month) {
+            $bucket = $range->month($month);
+            $monthDonations = $received->filter(fn($d) => $bucket->contains($d->donated_at ?? $d->created_at));
 
             $monthly[] = [
-                'month' => $label,
+                'month' => $month->format('M Y'),
                 'monetary' => $monthDonations->where('type', 'monetary')->sum('amount'),
                 'items' => $monthDonations->where('type', 'item')->count(),
                 'total' => $monthDonations->count(),

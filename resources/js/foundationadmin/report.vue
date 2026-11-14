@@ -3,6 +3,9 @@
 
     <PageHeader title="Reports" subtitle="Overview of your foundation's performance" />
 
+    <!-- From / To dates: every number, chart and the PDF follow them -->
+    <ReportDateRange v-if="isVerified && !checkingStatus" v-model="range" />
+
     <!-- PENDING VERIFICATION BANNER -->
     <SuspendedBanner v-if="isSuspended && !checkingStatus" :reason="suspensionReason">
       Reports aren't available while your foundation is suspended.
@@ -40,7 +43,7 @@
       <!-- MONTHLY BREAKDOWN -->
       <div class="panel" style="margin-bottom: 20px;">
         <div class="panel-head">
-          <h3 class="panel-title">Monthly Breakdown (Last 6 Months)</h3>
+          <h3 class="panel-title">Monthly Breakdown ({{ monthlyPeriod }})</h3>
         </div>
         <div class="panel-body">
           <EmptyState v-if="monthly.length === 0" message="No data yet." compact />
@@ -139,8 +142,8 @@
               <div class="engage-label">Followers</div>
             </div>
             <div class="engage-stat">
-              <div class="engage-value">{{ followers.summary.new_this_month }}</div>
-              <div class="engage-label">New this month</div>
+              <div class="engage-value">{{ isAllTime(range) ? followers.summary.new_this_month : (followers.summary.new_in_period ?? 0) }}</div>
+              <div class="engage-label">{{ isAllTime(range) ? 'New this month' : 'New in this period' }}</div>
             </div>
             <div class="engage-stat">
               <div class="engage-value">{{ followers.summary.became_donors_percent }}%</div>
@@ -166,7 +169,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
 import api from "@/services/api"
 import PageHeader from "../components/foundation-admin/pageheader.vue"
 import PendingVerificationBanner from "../components/foundation-admin/pendingverificationbanner.vue"
@@ -175,6 +178,12 @@ import StatCard from "../components/foundation-admin/statcard.vue"
 import EmptyState from "../components/foundation-admin/emptystate.vue"
 import Badge from "../components/foundation-admin/badge.vue"
 import CampaignTimeline from "../components/foundation-admin/CampaignTimeline.vue"
+import ReportDateRange from "../components/ReportDateRange.vue"
+import { presetRange, rangeLabel, rangeParams, rangeFileTag, isAllTime } from "../composable/reportRange.js"
+
+/* ── FROM / TO DATES ── */
+const range = ref(presetRange("all"))
+const monthlyPeriod = computed(() => isAllTime(range.value) ? "Last 6 Months" : rangeLabel(range.value))
 
 const isLoading  = ref(false)
 const summary    = ref({})
@@ -196,7 +205,7 @@ const followers = ref({
 })
 async function loadFollowers() {
   try {
-    const res = await api.get("/foundation/followers")
+    const res = await api.get("/foundation/followers", { params: rangeParams(range.value) })
     if (res.data?.summary) followers.value = res.data
   } catch (err) {
     console.error("Failed to load followers:", err)
@@ -229,7 +238,7 @@ async function loadFoundationStatus() {
 async function load() {
   isLoading.value = true
   try {
-    const res = await api.get("/foundation/reports")
+    const res = await api.get("/foundation/reports", { params: rangeParams(range.value) })
     summary.value     = res.data.summary    || {}
     monthly.value     = res.data.monthly    || []
     perCampaign.value = res.data.per_campaign || []
@@ -247,6 +256,12 @@ onMounted(async () => {
     loadFollowers()
   }
 })
+
+watch(range, () => {
+  if (!isVerified.value) return
+  load()
+  loadFollowers()
+}, { deep: true })
 
 const summaryCards = computed(() => [
   {
@@ -448,6 +463,7 @@ async function exportPdf() {
       "Generated " + new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
       PAGE_W - M, 14, { align: "right" }
     )
+    doc.text(pdfText("Period: " + rangeLabel(range.value)), PAGE_W - M, 22, { align: "right" })
 
     y = 42
 
@@ -479,7 +495,7 @@ async function exportPdf() {
     y += Math.ceil(cards.length / 3) * (cardH + cardGap) + 6
 
     /* MONTHLY BREAKDOWN */
-    sectionTitle("Monthly Breakdown (Last 6 Months)")
+    sectionTitle(pdfText(`Monthly Breakdown (${monthlyPeriod.value})`))
     if (monthly.value.length === 0) {
       emptyNote("No data yet.")
     } else {
@@ -541,7 +557,7 @@ async function exportPdf() {
     }
 
     const stamp = new Date().toISOString().slice(0, 10)
-    doc.save(`foundation-report-${stamp}.pdf`)
+    doc.save(`foundation-report-${rangeFileTag(range.value)}-${stamp}.pdf`)
   } catch (err) {
     console.error("Failed to export PDF:", err)
     alert("Could not generate the PDF. Please try again.")

@@ -173,16 +173,17 @@ class DonationIntegrityTest extends TestCase
         $this->getJson("/api/donor/campaigns/{$this->campaign->id}")->assertOk();
     }
 
-    /* ── Super admin report: "all time" period ── */
+    /* ── Super admin report: no dates chosen = all time ── */
 
     public function test_all_time_report_period_includes_every_received_donation(): void
     {
         $this->makeDonation('received', 1000);
         Sanctum::actingAs($this->makeUser('superadmin'));
 
-        $this->getJson('/api/admin/reports?period=all')
+        $this->getJson('/api/admin/reports')
             ->assertOk()
-            ->assertJsonPath('kpis.0.change', '₱1,000 this period')
+            ->assertJsonPath('kpis.0.value', '₱1,000')
+            ->assertJsonPath('kpis.0.change', 'all time')
             ->assertJsonPath('top_donors.0.amount', '₱1,000');
     }
 

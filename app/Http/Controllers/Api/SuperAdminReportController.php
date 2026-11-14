@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\Foundation;
 use App\Models\User;
-use Carbon\Carbon;
+use App\Support\ReportRange;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,31 +14,32 @@ class SuperAdminReportController extends Controller
 {
     public function index(Request $request)
     {
-        $period = $request->get('period', 'month');
-        $from = $this->periodStart($period);
+        // Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD; none = all time
+        $range = ReportRange::fromRequest($request);
+        $donationDate = ReportRange::donationDate();
+        $tz = config('app.display_timezone');
 
-        /* ── Totals ── */
-        $totalRaised = Donation::where('type', 'monetary')->where('status', 'received')->sum('amount');
-        $totalDonations = Donation::count();
-        $totalDonors = User::where('role', 'donor')->count();
-        $completedCampaigns = Campaign::where('status', 'completed')->count();
+        $receivedMoney = fn() => $range->apply(
+            Donation::where('type', 'monetary')->where('status', 'received'),
+            $donationDate
+        );
 
-        /* ── Period-scoped totals for % change ──
-           $from is null for "all time"; where('created_at', '>=', null) throws,
-           so the date filter is only applied when there is a start date. */
-        $inPeriod = fn($q) => $q->when($from, fn($q) => $q->where('created_at', '>=', $from));
-
-        $periodRaised = $inPeriod(Donation::where('type', 'monetary')->where('status', 'received'))->sum('amount');
-        $periodDonors = $inPeriod(User::where('role', 'donor'))->count();
-        $avgDonation = $inPeriod(Donation::where('type', 'monetary')->where('status', 'received'))->avg('amount') ?? 0;
+        /* ── Totals for the chosen dates ── */
+        $raised = $receivedMoney()->sum('amount');
+        $avgDonation = $receivedMoney()->avg('amount') ?? 0;
+        $newDonors = $range->apply(User::where('role', 'donor'), 'created_at')->count();
+        $itemsReceived = $range->apply(
+            Donation::where('type', 'item')->where('status', 'received'),
+            $donationDate
+        )->count();
 
         /* ── KPIs ── */
         $kpis = [
             [
                 'label' => 'Total Raised',
-                'value' => '₱' . number_format($totalRaised, 0),
-                'change' => '₱' . number_format($periodRaised, 0) . ' this period',
-                'up' => $periodRaised >= 0,
+                'value' => '₱' . number_format($raised, 0),
+                'change' => $range->label(),
+                'up' => true,
                 'bg' => '#f0fdf4',
                 'col' => '#059669',
                 'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
@@ -55,45 +55,50 @@ class SuperAdminReportController extends Controller
             ],
             [
                 'label' => 'New Donors',
-                'value' => number_format($periodDonors),
-                'change' => 'registered this period',
-                'up' => $periodDonors > 0,
+                'value' => number_format($newDonors),
+                'change' => $range->isAllTime() ? 'registered in total' : 'registered in this period',
+                'up' => $newDonors > 0,
                 'bg' => '#fefce8',
                 'col' => '#ca8a04',
                 'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
             ],
             [
-                'label' => 'Campaigns Completed',
-                'value' => number_format($completedCampaigns),
-                'change' => 'total completed',
+                'label' => 'Items Received',
+                'value' => number_format($itemsReceived),
+                'change' => 'item donations',
                 'up' => true,
                 'bg' => '#fef2f2',
                 'col' => '#dc2626',
-                'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>',
+                'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
             ],
         ];
 
-        /* ── Monthly donations (last 6 months) ── */
-        $monthly = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $month = now()->subMonthsNoOverflow($i);
-            $amount = Donation::where('type', 'monetary')
-                ->where('status', 'received')
-                ->whereBetween('created_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
-                ->sum('amount');
-            $monthly[] = [
-                'month' => $month->format('M'),
+        /* ── Money per month: the chosen months, or the last 6 ── */
+        $months = $range->months(6);
+        $spansYears = reset($months)->year !== end($months)->year;
+        $monthly = array_map(function ($month) use ($range, $donationDate, $spansYears, $tz) {
+            $amount = $range->month($month)->apply(
+                Donation::where('type', 'monetary')->where('status', 'received'),
+                $donationDate
+            )->sum('amount');
+
+            return [
+                'month' => $month->format($spansYears ? 'M y' : 'M'),
+                'current' => $month->format('Y-m') === now($tz)->format('Y-m'),
                 'amount' => round($amount / 1000, 1), // in thousands
             ];
-        }
+        }, $months);
 
         /* ── Donations by foundation category ── */
-        $categoryTotals = DB::table('donations')
-            ->join('campaigns', 'donations.campaign_id', '=', 'campaigns.id')
-            ->join('foundations', 'campaigns.foundation_id', '=', 'foundations.id')
-            ->join('categories', 'foundations.category_id', '=', 'categories.id')
-            ->where('donations.type', 'monetary')
-            ->where('donations.status', 'received')
+        $categoryTotals = $range->apply(
+            DB::table('donations')
+                ->join('campaigns', 'donations.campaign_id', '=', 'campaigns.id')
+                ->join('foundations', 'campaigns.foundation_id', '=', 'foundations.id')
+                ->join('categories', 'foundations.category_id', '=', 'categories.id')
+                ->where('donations.type', 'monetary')
+                ->where('donations.status', 'received'),
+            $donationDate
+        )
             ->select('categories.name as cat', DB::raw('SUM(donations.amount) as total'))
             ->groupBy('categories.name')
             ->orderByDesc('total')
@@ -112,11 +117,13 @@ class SuperAdminReportController extends Controller
 
         /* ── Top donors ── */
         $avatarColors = ['#0F2D52', '#059669', '#D4AF37', '#3b82f6', '#8b5cf6', '#dc2626'];
-        $topDonors = DB::table('donations')
-            ->join('users', 'donations.donor_id', '=', 'users.id')
-            ->where('donations.type', 'monetary')
-            ->where('donations.status', 'received')
-            ->when($from, fn($q) => $q->where('donations.created_at', '>=', $from))
+        $topDonors = $range->apply(
+            DB::table('donations')
+                ->join('users', 'donations.donor_id', '=', 'users.id')
+                ->where('donations.type', 'monetary')
+                ->where('donations.status', 'received'),
+            $donationDate
+        )
             ->select(
                 'users.id',
                 'users.first_name',
@@ -145,8 +152,8 @@ class SuperAdminReportController extends Controller
         /* ── Top foundations ── */
         $topFoundations = Foundation::withCount('campaigns')
             ->withSum([
-                'donations as total_raised' => function ($q) {
-                    $q->where('donations.type', 'monetary')->where('donations.status', 'received');
+                'donations as total_raised' => function ($q) use ($range, $donationDate) {
+                    $range->apply($q->where('donations.type', 'monetary')->where('donations.status', 'received'), $donationDate);
                 }
             ], 'amount')
             ->orderByDesc('total_raised')
@@ -166,22 +173,12 @@ class SuperAdminReportController extends Controller
             ->toArray();
 
         return response()->json([
+            'period' => $range->label(),
             'kpis' => $kpis,
             'monthly' => $monthly,
             'categories' => $categories,
             'top_donors' => $topDonors,
             'top_foundations' => $topFoundations,
         ]);
-    }
-
-    /* ── helpers ── */
-    private function periodStart(string $period): ?Carbon
-    {
-        return match ($period) {
-            'month' => now()->startOfMonth(),
-            'quarter' => now()->startOfQuarter(),
-            'year' => now()->startOfYear(),
-            default => null,
-        };
     }
 }
