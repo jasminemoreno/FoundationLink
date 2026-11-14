@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Campaign;
+use App\Models\Category;
 use App\Models\Donation;
 use App\Models\Foundation;
 use App\Models\User;
@@ -16,22 +18,50 @@ class SuperAdminReportController extends Controller
     {
         // Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD; none = all time
         $range = ReportRange::fromRequest($request);
+        // Optional ?foundation_id= and ?category_id= (the foundation's category)
+        $request->validate([
+            'foundation_id' => 'nullable|integer|exists:foundations,id',
+            'category_id' => 'nullable|integer|exists:categories,id',
+        ]);
+        $foundationId = $request->integer('foundation_id') ?: null;
+        $categoryId = $request->integer('category_id') ?: null;
+        $filtered = $foundationId || $categoryId;
+
+        // Campaigns of the chosen foundation / category (deleted ones too, their donations still count)
+        $campaignIds = $filtered
+            ? Campaign::withTrashed()
+                ->when($foundationId, fn($q) => $q->where('foundation_id', $foundationId))
+                ->when($categoryId, fn($q) => $q->whereHas('foundation', fn($f) => $f->where('category_id', $categoryId)))
+                ->pluck('id')
+            : null;
+        $scope = fn($q) => $q->when($filtered, fn($q) => $q->whereIn('donations.campaign_id', $campaignIds));
+
         $donationDate = ReportRange::donationDate();
         $tz = config('app.display_timezone');
 
-        $receivedMoney = fn() => $range->apply(
-            Donation::where('type', 'monetary')->where('status', 'received'),
+        $received = fn(string $type) => $scope($range->apply(
+            Donation::where('donations.type', $type)->where('donations.status', 'received'),
             $donationDate
-        );
+        ));
 
-        /* ── Totals for the chosen dates ── */
-        $raised = $receivedMoney()->sum('amount');
-        $avgDonation = $receivedMoney()->avg('amount') ?? 0;
-        $newDonors = $range->apply(User::where('role', 'donor'), 'created_at')->count();
-        $itemsReceived = $range->apply(
-            Donation::where('type', 'item')->where('status', 'received'),
-            $donationDate
-        )->count();
+        /* ── Totals for the chosen dates and filters ── */
+        $raised = $received('monetary')->sum('amount');
+        $avgDonation = $received('monetary')->avg('amount') ?? 0;
+        $itemsReceived = $received('item')->count();
+
+        // Donor accounts aren't tied to a foundation, so with a filter this counts who gave instead
+        $donorCard = $filtered
+            ? [
+                'label' => 'Donors',
+                'value' => $scope($range->apply(Donation::where('donations.status', 'received'), $donationDate))
+                    ->distinct()->count('donor_id'),
+                'change' => 'people whose donation was received',
+            ]
+            : [
+                'label' => 'New Donors',
+                'value' => $range->apply(User::where('role', 'donor'), 'created_at')->count(),
+                'change' => 'donor accounts created',
+            ];
 
         /* ── KPIs ── */
         $kpis = [
@@ -54,10 +84,10 @@ class SuperAdminReportController extends Controller
                 'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>',
             ],
             [
-                'label' => 'New Donors',
-                'value' => number_format($newDonors),
-                'change' => 'donor accounts created',
-                'up' => $newDonors > 0,
+                'label' => $donorCard['label'],
+                'value' => number_format($donorCard['value']),
+                'change' => $donorCard['change'],
+                'up' => $donorCard['value'] > 0,
                 'bg' => '#fefce8',
                 'col' => '#ca8a04',
                 'icon' => '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
@@ -76,11 +106,11 @@ class SuperAdminReportController extends Controller
         /* ── Money per month: the chosen months, or the last 6 ── */
         $months = $range->months(6);
         $spansYears = reset($months)->year !== end($months)->year;
-        $monthly = array_map(function ($month) use ($range, $donationDate, $spansYears, $tz) {
-            $amount = $range->month($month)->apply(
-                Donation::where('type', 'monetary')->where('status', 'received'),
+        $monthly = array_map(function ($month) use ($range, $scope, $donationDate, $spansYears, $tz) {
+            $amount = $scope($range->month($month)->apply(
+                Donation::where('donations.type', 'monetary')->where('donations.status', 'received'),
                 $donationDate
-            )->sum('amount');
+            ))->sum('amount');
 
             return [
                 'month' => $month->format($spansYears ? 'M y' : 'M'),
@@ -91,7 +121,7 @@ class SuperAdminReportController extends Controller
         }, $months);
 
         /* ── Donations by foundation category ── */
-        $categoryTotals = $range->apply(
+        $categoryTotals = $scope($range->apply(
             DB::table('donations')
                 ->join('campaigns', 'donations.campaign_id', '=', 'campaigns.id')
                 ->join('foundations', 'campaigns.foundation_id', '=', 'foundations.id')
@@ -99,7 +129,7 @@ class SuperAdminReportController extends Controller
                 ->where('donations.type', 'monetary')
                 ->where('donations.status', 'received'),
             $donationDate
-        )
+        ))
             ->select('categories.name as cat', DB::raw('SUM(donations.amount) as total'))
             ->groupBy('categories.name')
             ->orderByDesc('total')
@@ -118,13 +148,13 @@ class SuperAdminReportController extends Controller
 
         /* ── Top donors ── */
         $avatarColors = ['#0F2D52', '#059669', '#D4AF37', '#3b82f6', '#8b5cf6', '#dc2626'];
-        $topDonors = $range->apply(
+        $topDonors = $scope($range->apply(
             DB::table('donations')
                 ->join('users', 'donations.donor_id', '=', 'users.id')
                 ->where('donations.type', 'monetary')
                 ->where('donations.status', 'received'),
             $donationDate
-        )
+        ))
             ->select(
                 'users.id',
                 'users.first_name',
@@ -152,6 +182,8 @@ class SuperAdminReportController extends Controller
 
         /* ── Top foundations ── */
         $topFoundations = Foundation::withCount('campaigns')
+            ->when($foundationId, fn($q) => $q->where('foundations.id', $foundationId))
+            ->when($categoryId, fn($q) => $q->where('foundations.category_id', $categoryId))
             ->withSum([
                 'donations as total_raised' => function ($q) use ($range, $donationDate) {
                     $range->apply($q->where('donations.type', 'monetary')->where('donations.status', 'received'), $donationDate);
@@ -175,6 +207,16 @@ class SuperAdminReportController extends Controller
 
         return response()->json([
             'period' => $range->label(),
+            'filters' => [
+                'foundation' => $foundationId ? Foundation::find($foundationId)?->name : null,
+                'category' => $categoryId ? Category::find($categoryId)?->name : null,
+            ],
+            // Choices for the filter dropdowns: approved (or suspended) foundations, and all categories
+            'options' => [
+                'foundations' => Foundation::whereIn('status', ['verified', 'suspended'])
+                    ->orderBy('name')->get(['id', 'name', 'category_id']),
+                'categories' => Category::orderBy('name')->get(['id', 'name']),
+            ],
             'kpis' => $kpis,
             'monthly' => $monthly,
             'categories' => $categories,

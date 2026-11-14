@@ -16,8 +16,20 @@
     <ReportDateRange
       v-if="isVerified && !checkingStatus"
       v-model="range"
+      :scope="campaignScope"
       note="Money and items count only donations you marked as received."
-    />
+    >
+      <label class="rr-filter">
+        <span class="rr-filter-label">Campaign</span>
+        <select v-model="campaignId" class="rr-select">
+          <option value="">All campaigns</option>
+          <option v-for="c in campaignOptions" :key="c.id" :value="String(c.id)">
+            {{ c.title }}{{ c.status === 'active' ? '' : ` (${statusLabel(c.status)})` }}
+          </option>
+        </select>
+      </label>
+      <button v-if="hasFilters" type="button" class="rr-clear" @click="clearFilters">Clear filters</button>
+    </ReportDateRange>
 
     <!-- PENDING VERIFICATION BANNER -->
     <SuspendedBanner v-if="isSuspended && !checkingStatus" :reason="suspensionReason">
@@ -137,7 +149,10 @@
         <div class="panel-head">
           <div>
             <h3 class="panel-title">Followers &amp; Engagement</h3>
-            <p class="panel-sub">People who follow your foundation, and how many of them have donated.</p>
+            <p class="panel-sub">
+              People who follow your foundation, and how many of them have donated.
+              <template v-if="campaignId">Followers are for your whole foundation, so the campaign filter doesn't change this section.</template>
+            </p>
           </div>
           <router-link to="/foundation/donor" class="panel-link">See followers →</router-link>
         </div>
@@ -189,6 +204,19 @@ import { presetRange, rangeLabel, rangeParams, rangeFileTag, isAllTime } from ".
 /* ── FROM / TO DATES ── */
 const range = ref(presetRange("all"))
 const monthlyPeriod = computed(() => isAllTime(range.value) ? "Last 6 Months" : rangeLabel(range.value))
+
+/* ── CAMPAIGN FILTER (combines with the dates) ── */
+const campaignId = ref("")
+const campaignOptions = ref([])
+const campaignScope = computed(() => {
+  const c = campaignOptions.value.find(x => String(x.id) === campaignId.value)
+  return c ? `Campaign: ${c.title}` : ""
+})
+const hasFilters = computed(() => !!(campaignId.value || !isAllTime(range.value)))
+function clearFilters() {
+  campaignId.value = ""
+  range.value = presetRange("all")
+}
 
 const isLoading  = ref(false)
 const summary    = ref({})
@@ -243,10 +271,13 @@ async function loadFoundationStatus() {
 async function load() {
   isLoading.value = true
   try {
-    const res = await api.get("/foundation/reports", { params: rangeParams(range.value) })
+    const params = rangeParams(range.value)
+    if (campaignId.value) params.campaign_id = campaignId.value
+    const res = await api.get("/foundation/reports", { params })
     summary.value     = res.data.summary    || {}
     monthly.value     = res.data.monthly    || []
     perCampaign.value = res.data.per_campaign || []
+    if (res.data.campaign_options) campaignOptions.value = res.data.campaign_options
   } catch (err) {
     console.error("Failed to load reports:", err)
   } finally {
@@ -267,6 +298,9 @@ watch(range, () => {
   load()
   loadFollowers()
 }, { deep: true })
+
+// Followers belong to the whole foundation, so only the report reloads
+watch(campaignId, () => { if (isVerified.value) load() })
 
 const summaryCards = computed(() => [
   {
@@ -475,6 +509,7 @@ async function exportPdf() {
       PAGE_W - M, 14, { align: "right" }
     )
     doc.text(pdfText("Period: " + rangeLabel(range.value)), PAGE_W - M, 22, { align: "right" })
+    if (campaignScope.value) doc.text(pdfText(campaignScope.value), PAGE_W - M, 27, { align: "right" })
 
     y = 42
 

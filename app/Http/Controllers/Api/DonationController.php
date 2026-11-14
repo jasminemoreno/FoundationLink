@@ -392,6 +392,8 @@ class DonationController extends Controller
     {
         // Optional ?from=YYYY-MM-DD&to=YYYY-MM-DD; none = all time
         $range = ReportRange::fromRequest($request);
+        // Optional ?campaign_id= : the report for one of this foundation's campaigns
+        $request->validate(['campaign_id' => 'nullable|integer']);
         $foundation = $this->getFoundation();
 
         if ($foundation->status !== 'verified') {
@@ -409,16 +411,24 @@ class DonationController extends Controller
             ]);
         }
 
+        $allCampaigns = Campaign::where('foundation_id', $foundation->id)->orderBy('title')->get();
+        $campaignId = $request->integer('campaign_id') ?: null;
+        if ($campaignId && !$allCampaigns->contains('id', $campaignId)) {
+            $message = 'Please choose one of your campaigns.';
+            return response()->json(['message' => $message, 'errors' => ['campaign_id' => [$message]]], 422);
+        }
+
         // Donations made in the chosen dates (donated_at, or created_at for older rows)
         $donations = Donation::with(['donor', 'campaign'])
             ->whereHas('campaign', function ($q) use ($foundation) {
                 $q->where('foundation_id', $foundation->id);
             })
+            ->when($campaignId, fn($q) => $q->where('campaign_id', $campaignId))
             ->get()
             ->filter(fn($d) => $range->isAllTime() || $range->contains($d->donated_at ?? $d->created_at))
             ->values();
 
-        $campaigns = Campaign::where('foundation_id', $foundation->id)->get();
+        $campaigns = $campaignId ? $allCampaigns->where('id', $campaignId)->values() : $allCampaigns;
 
         // Raised / items / donor totals count only what the foundation confirmed;
         // pending and cancelled donations are not money or goods actually received.
@@ -468,6 +478,9 @@ class DonationController extends Controller
             ],
             'monthly' => $monthly,
             'per_campaign' => $perCampaign->values(),
+            'filters' => ['campaign' => $campaignId ? $campaigns->first()->title : null],
+            // Choices for the campaign dropdown
+            'campaign_options' => $allCampaigns->map(fn($c) => ['id' => $c->id, 'title' => $c->title, 'status' => $c->status])->values(),
         ]);
     }
 

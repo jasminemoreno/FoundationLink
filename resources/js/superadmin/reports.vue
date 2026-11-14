@@ -15,7 +15,27 @@
     </PageHeader>
 
     <!-- From / To dates: every number, chart and the PDF follow them -->
-    <ReportDateRange v-model="range" note="Money and items count only donations marked as received." />
+    <ReportDateRange
+      v-model="range"
+      :scope="filterScope"
+      note="Money and items count only donations marked as received."
+    >
+      <label class="rr-filter">
+        <span class="rr-filter-label">Foundation category</span>
+        <select v-model="categoryId" class="rr-select">
+          <option value="">All categories</option>
+          <option v-for="c in options.categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+        </select>
+      </label>
+      <label class="rr-filter">
+        <span class="rr-filter-label">Foundation</span>
+        <select v-model="foundationId" class="rr-select">
+          <option value="">All foundations</option>
+          <option v-for="f in foundationChoices" :key="f.id" :value="String(f.id)">{{ f.name }}</option>
+        </select>
+      </label>
+      <button v-if="hasFilters" type="button" class="rr-clear" @click="clearFilters">Clear filters</button>
+    </ReportDateRange>
 
     <!-- Loading -->
     <div v-if="loading" class="loading-state">
@@ -175,6 +195,36 @@ import { presetRange, rangeLabel, rangeParams, rangeFileTag, isAllTime } from '.
 const range       = ref(presetRange('all'))
 const circumference = 2 * Math.PI * 35
 
+/* ── Filters: foundation category and foundation (combine with the dates) ── */
+const categoryId   = ref('')
+const foundationId = ref('')
+const options      = ref({ foundations: [], categories: [] })
+
+// With a category chosen, only that category's foundations are offered
+const foundationChoices = computed(() => categoryId.value
+  ? options.value.foundations.filter(f => String(f.category_id) === categoryId.value)
+  : options.value.foundations)
+
+const nameOf = (list, id) => list.find(x => String(x.id) === id)?.name || ''
+const filterScope = computed(() => [
+  categoryId.value && `Category: ${nameOf(options.value.categories, categoryId.value)}`,
+  foundationId.value && `Foundation: ${nameOf(options.value.foundations, foundationId.value)}`,
+].filter(Boolean).join(' · '))
+
+const hasFilters = computed(() => !!(categoryId.value || foundationId.value || !isAllTime(range.value)))
+function clearFilters() {
+  categoryId.value = ''
+  foundationId.value = ''
+  range.value = presetRange('all')
+}
+
+function reportParams() {
+  const params = rangeParams(range.value)
+  if (categoryId.value) params.category_id = categoryId.value
+  if (foundationId.value) params.foundation_id = foundationId.value
+  return params
+}
+
 const loading   = ref(true)
 const exporting = ref(false)
 
@@ -188,7 +238,8 @@ const topFoundations = ref([])
 async function fetchReports() {
   loading.value = true
   try {
-    const { data } = await api.get('/admin/reports', { params: rangeParams(range.value) })
+    const { data } = await api.get('/admin/reports', { params: reportParams() })
+    if (data.options) options.value = data.options
     kpis.value           = data.kpis           ?? []
     monthlyData.value    = data.monthly         ?? []
     donutData.value      = data.categories      ?? []
@@ -202,7 +253,14 @@ async function fetchReports() {
 }
 
 onMounted(fetchReports)
-watch(range, fetchReports, { deep: true })
+// One reload per change of dates or filters (clearing them all at once loads once)
+watch(() => JSON.stringify(reportParams()), fetchReports)
+watch(categoryId, () => {
+  // A foundation outside the new category would make the report empty: drop it
+  if (foundationId.value && !foundationChoices.value.some(f => String(f.id) === foundationId.value)) {
+    foundationId.value = ''
+  }
+})
 
 /* ── Bar labels: pesos for the month, e.g. ₱6,500 or ₱12.5K ── */
 function barPesos(m) { return m.raised ?? (m.amount || 0) * 1000 }
@@ -278,6 +336,7 @@ async function exportPdf() {
     doc.text('FoundationLink — Reports & Analytics', margin, 14)
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
+    if (filterScope.value) doc.text(peso(filterScope.value), pageW - margin, 19, { align: 'right' })
     doc.text(`Period: ${rangeLabel(range.value)}   Generated: ${new Date().toLocaleDateString('en-PH', { dateStyle: 'long' })}`, pageW - margin, 14, { align: 'right' })
     y = 30
 

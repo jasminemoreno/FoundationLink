@@ -41,9 +41,15 @@
       </div>
     </div>
 
+    <!-- extra filters from the page (e.g. foundation, campaign) -->
+    <div v-if="$slots.default" class="rr-extra">
+      <slot />
+    </div>
+
     <p class="rr-showing">
       <span class="rr-showing-dot" aria-hidden="true"></span>
       Showing: <strong>{{ rangeLabel(modelValue) }}</strong>
+      <template v-if="scope">· <strong>{{ scope }}</strong></template>
       <span v-if="note" class="rr-note">· {{ note }}</span>
     </p>
   </div>
@@ -58,7 +64,8 @@ import { RANGE_PRESETS, presetRange, rangeLabel, todayYmd } from '../composable/
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({ from: '', to: '' }) },
-  note: { type: String, default: '' }, // plain-words reminder shown after "Showing: …"
+  note: { type: String, default: '' },  // plain-words reminder shown after "Showing: …"
+  scope: { type: String, default: '' }, // the page's other filters, e.g. "Campaign: Meal Packs"
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -90,6 +97,20 @@ const activePreset = computed(() => {
 .rr-dates { display: flex; flex-wrap: wrap; gap: 12px; }
 .rr-field { display: flex; flex-direction: column; gap: 4px; min-width: 170px; flex: 1; }
 .rr-label { font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+/* Filter dropdowns the page puts in the slot */
+.rr-extra { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+:slotted(.rr-filter) { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; max-width: 340px; }
+:slotted(.rr-filter-label) { font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+:slotted(.rr-select) {
+  width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff;
+  font-size: 0.86rem; color: #0F2D52; font-family: inherit; cursor: pointer; outline: none;
+}
+:slotted(.rr-select:focus) { border-color: #0F2D52; box-shadow: 0 0 0 3px rgba(15,45,82,0.1); }
+:slotted(.rr-clear) {
+  padding: 10px 14px; border-radius: 10px; border: 1px solid #fecaca; background: #fef2f2; color: #b91c1c;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+}
+:slotted(.rr-clear:hover) { background: #fee2e2; }
 .rr-showing {
   flex-basis: 100%; margin: 2px 0 0; padding-top: 10px; border-top: 1px dashed #e2e8f0;
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 0.82rem; color: #475569;
@@ -104,5 +125,7 @@ const activePreset = computed(() => {
 }
 @media (max-width: 480px) {
   .rr-dates { flex-direction: column; }
+  .rr-extra { flex-direction: column; align-items: stretch; }
+  :slotted(.rr-filter) { max-width: none; min-width: 0; }
 }
 </style>
